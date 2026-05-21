@@ -1,6 +1,24 @@
-﻿public class MapGrid
+﻿// POR AHORA METO TODO EN 1 ARCHIVO el ultimo proyecto se me fue de las manos y tenia como 20 archivos distintos
+public enum Facing
 {
-    private List<PhysicalEntity?>[][] grid;
+    right,
+    left
+}
+public enum State
+{
+    idle,
+    walk,
+    fall
+}
+public enum CollisionType
+{
+    platform,   // choco con TODO
+    character,  // choco con plataformas, otros char.
+    item,       // choco solo con plataformas
+}
+public class MapGrid
+{
+    private List<PhysicalEntity>[][] grid;
     private int cols;
     private int rows;
     private int cellSize;
@@ -9,27 +27,31 @@
 
     public MapGrid(int width, int height, int cellSize)
     {
+        width++;
+        height++;
         this.cellSize = cellSize;
         this.width = width;
         this.height = height;
-        cols = width / cellSize;
-        rows = height / cellSize;
-        grid = new List<PhysicalEntity?>[cols][];
+        // redondeo para arriba, tienen que "sobrar" tiles, no restar
+        // aunque haya tiles de mas, position sabe el techo verdadero
+        cols = (int)Math.Ceiling((float)width / cellSize);
+        rows = (int)Math.Ceiling((float)height / cellSize);
+        grid = new List<PhysicalEntity>[cols][];
         for (int i = 0; i < cols; i++){
-            grid[i] = new List<PhysicalEntity?>[rows];
+            grid[i] = new List<PhysicalEntity>[rows];
             for (int j = 0; j < rows; j++){
-                grid[i][j] = new List<PhysicalEntity?>();
+                grid[i][j] = new List<PhysicalEntity>();
             } 
         }  
     }
-    public List<PhysicalEntity?> GetCellEntities(Position pos)
+    public List<PhysicalEntity> GetCellEntities(Position pos)
     {
         (float x, float y) = pos.Vector;
         int col = (int)x/cellSize;
         int row = (int)y/cellSize; // chequeo Out of bounds
         return grid[col][row]; // es una referencia, si modifico se modifica el objeto
     }
-    public List<PhysicalEntity?> GetCellByIndex(int x, int y)
+    public List<PhysicalEntity> GetCellByIndex(int x, int y)
     {
         return grid[x][y];
     }
@@ -169,30 +191,30 @@ public class PhysicalEntity
         return((int)(x + xOffset)/map.CellSize,(int)(x + xOffset + width)/map.CellSize,
                (int)(y + yOffset)/map.CellSize,(int)(y + yOffset + height)/map.CellSize);
     }
-    public bool NewPositionOverlapsEntity(Position pos)
+    public List<PhysicalEntity> HitboxOverlapList()
     {
-        (float nx, float ny) = pos.Vector;
+        // calculo toda (x,y) que ocupa mi hitbox, devuelvo cuales physEnt choca
+        (float nx, float ny) = position.Vector;
         (float xOffset, float yOffset) = hitbox.Offsets;
         (float width, float height) = hitbox.Dimensions;
-        int startCol = (int)(nx + xOffset) / map.CellSize;
-        int endCol   = (int)(nx + xOffset + width) / map.CellSize;
-        int startRow = (int)(ny + yOffset) / map.CellSize;
-        int endRow   = (int)(ny + yOffset + height) / map.CellSize;
-        Position tempPosition = new Position(0,0,map.Width-1,map.Height-1);
-        for (int col = startCol; col <= endCol; col++)
+        int startX = (int)(nx + xOffset) / map.CellSize;
+        int endX   = (int)(nx + xOffset + width) / map.CellSize;
+        int startY = (int)(ny + yOffset) / map.CellSize;
+        int endY   = (int)(ny + yOffset + height) / map.CellSize;
+        List<PhysicalEntity> res = new List<PhysicalEntity>();
+        for (int x = startX; x <= endX; x++)
         {
-            for (int row = startRow; row <= endRow; row++)
+            for (int y = startY; y <= endY; y++)
             {   
-                tempPosition.Set(col,row);
-                if (map.GetCellByIndex(col,row).Count != 0){return true;}
+                res.AddRange(map.GetCellByIndex(x,y));
             }
         }
-        return false;
+        return res;
     }
-    public bool NewPositionInBounds(Position newPos)
+    public bool PositionInBounds()
     {
-        (float x, float y) = newPos.Vector;
-        (float maxX, float maxY) = newPos.Bounds;
+        (float x, float y) = Pos.Vector;
+        (float maxX, float maxY) = Pos.Bounds;
         (float xOffset, float yOffset) = hitbox.Offsets;
         (float width, float height) = hitbox.Dimensions;
         return x + xOffset + width <= maxX && x + xOffset + width >= 0 &&
@@ -200,41 +222,58 @@ public class PhysicalEntity
     }
     public void Move()
     {
+        // me voy moviendo de a 1 paso
+        // si detecto una colision, chequeo si me hace frenar, chequeo efectos de la colision
         (float vx, float vy) =  MoveVector;
         if(MoveVector == (0,0)){return;}
         map.RemoveEntity(this);
+
         (float x, float y) =    PosVector;
+        (float maxX, float maxY) = Pos.Bounds;
+
         float maxSteps = Math.Max(Math.Abs(vx), Math.Abs(vy));
         (float stepX, float stepY) = (vx / maxSteps, vy / maxSteps);
-        Position tempPos = new Position(x,y,map.Width-1,map.Height-1);
+
+        List<PhysicalEntity> entities = new List<PhysicalEntity>();
+
         for(int i = 0; i < maxSteps; i++)
         {
-            // si ya estoy en colision antes de moverme se rompe
+            // si ya estoy en colision antes de moverme no lo detecto con este sistema
             x += stepX;
-            tempPos.Set(x,y);
-            if(!NewPositionInBounds(tempPos) || NewPositionOverlapsEntity(tempPos))
+            position.Set(x,y);
+            entities = HitboxOverlapList();
+            //foreach entinty in entities COLISION, luego chequear si me frena dentro del if
+            if(!PositionInBounds() || CollisionListStopsMovement(entities))
             {
                 x -= stepX;
-                tempPos.Set(x,y);
+                position.Set(x,y);
                 stepX = 0;
             }
+            // todo igual pero ahora con y
             y += stepY;
-            tempPos.Set(x,y);
-            if(!NewPositionInBounds(tempPos) || NewPositionOverlapsEntity(tempPos))
+            position.Set(x,y);
+            entities = HitboxOverlapList();
+            if(!PositionInBounds() || CollisionListStopsMovement(entities))
             {
                 y -= stepY;
-                tempPos.Set(x,y);
+                position.Set(x,y);
                 stepY = 0;
+                //this.Collide(that)
             }
         }
         position.Set(x,y);
         movement.Reset();
         map.AddEntity(this);
     }
+    // Collide hace lo que tenga que hacer y devuelve "NO SIGAS MOVIENDOTE" ?
+    public bool CollisionListStopsMovement(List<PhysicalEntity> entities)
+    {
+        return entities.Count()>0; // toda PhysEnt por defecto frena al chocar con cualquier entidad
+    }                              // distintos hijos tendran overRide de este metodo
     public void Update()
     {
-        Move();
-        // otras cosas
+        // continuar animacion...
+        // ticks de veneno... (quizas no va esto aca ahora que hice hijos de la clase)
     }
     public void PrintVertices()
     {
@@ -256,26 +295,56 @@ public class PhysicalEntity
     public (float X,float Y) PosVector => position.Vector;
     public (float VX, float VY) MoveVector => movement.Vector;
 }
+public class Character : PhysicalEntity
+{
+    private string name;
+    private bool hasGravity;
+    public Character(float x, float y, MapGrid map, float width, float height,
+                     string name, bool hasGravity = true) 
+                     : base(x,y,map,width,height) // llamo al constr. de PhysEnt
+    {
+        this.name = name;
+        this.hasGravity = hasGravity;
+    }
+    private bool StandingOnPlatform()
+    {
+        // me fijo que unidades me chocarian si estuviera 1 pixel abajo
+        // si alguna es platform y su colision es con mi lado inferior, devuelvo true
+        (float x, float y) = PosVector;
+        (float maxX, float maxY) = Pos.Bounds;
+        Position probe = new Position(x,y+1,maxX,maxY); // voy a mirar 1 pixel abajo
+
+        List<PhysicalEntity> collisionList = new List<PhysicalEntity>();
+        collisionList = HitboxOverlapList();
+        return false;
+    }
+}
+public class Platform : PhysicalEntity
+{
+    public Platform(float x, float y, MapGrid map, float width, float height) : base(x,y,map,width,height){}
+    // en un futuro: mi move hara que se muevan los de arriba mio, etc...
+}
 public class Program
 {
-    const int CELL_SIZE = 20;
+    const int CELL_SIZE = 32;
     public static void Main()
     {
         int width = 600;
         int height = 200;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
         PhysicalEntity player = new PhysicalEntity(200, 140, map, 32, 32);
-        PhysicalEntity box = new PhysicalEntity(303,160, map, 32, 32);
+        PhysicalEntity box = new Platform(303,160, map, 16, 16);
         while (true)
         {
             if (Console.KeyAvailable)
             {
                 var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.W) player.AddMovement(new Movement(0,-25)); // arriba a abajo el eje y
-                if (key == ConsoleKey.S) player.AddMovement(new Movement(0,25));
-                if (key == ConsoleKey.A) player.AddMovement(new Movement(-25,0));
-                if (key == ConsoleKey.D) player.AddMovement(new Movement(25,0));
-                player.Update();
+                if (key == ConsoleKey.W) player.AddMovement(new Movement(0,-32)); // arriba a abajo el eje y
+                if (key == ConsoleKey.S) player.AddMovement(new Movement(0,32));
+                if (key == ConsoleKey.A) player.AddMovement(new Movement(-32,0));
+                if (key == ConsoleKey.D) player.AddMovement(new Movement(32,0));
+                if (key == ConsoleKey.F) player.AddMovement(new Movement(0,0));
+                player.Move();
                 map.PrintMap(player);
                 player.PrintVertices();
                 Console.WriteLine("ahora la box");
