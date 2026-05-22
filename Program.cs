@@ -44,7 +44,7 @@ public class MapGrid
             } 
         }  
     }
-    public List<PhysicalEntity> GetCellEntities(Position pos)
+    private List<PhysicalEntity> GetCellEntities(Position pos)
     {
         (float x, float y) = pos.Vector;
         int col = (int)x/cellSize;
@@ -109,12 +109,6 @@ public class Position
         this.maxY = maxY;
         this.x = Math.Clamp(x, 0, maxX);
         this.y = Math.Clamp(y, 0, maxY);
-    }
-    public void MovePos(Movement move)
-    {
-        (float dx, float dy) = move.Vector;
-        x = Math.Clamp(x + dx, 0, maxX);
-        y = Math.Clamp(y + dy, 0, maxY);
     }
     public void Set(float dx, float dy)
     {
@@ -186,8 +180,8 @@ public class PhysicalEntity
     {
         // puede devolver out of bounds !!! 
         (float x, float y) = position.Vector;
-        (float xOffset, float yOffset) = hitbox.Offsets;
-        (float width, float height) = hitbox.Dimensions;
+        (float xOffset, float yOffset) = HitboxOffsets;
+        (float width, float height) = HitboxDimensions;
         return((int)(x + xOffset)/map.CellSize,(int)(x + xOffset + width)/map.CellSize,
                (int)(y + yOffset)/map.CellSize,(int)(y + yOffset + height)/map.CellSize);
     }
@@ -195,7 +189,7 @@ public class PhysicalEntity
     {
         // calculo toda (x,y) que ocupa mi hitbox, devuelvo cuales physEnt choca
         (float nx, float ny) = position.Vector;
-        (float xOffset, float yOffset) = hitbox.Offsets;
+        (float xOffset, float yOffset) = HitboxOffsets;
         (float width, float height) = hitbox.Dimensions;
         int startX = (int)(nx + xOffset) / map.CellSize;
         int endX   = (int)(nx + xOffset + width) / map.CellSize;
@@ -211,12 +205,12 @@ public class PhysicalEntity
         }
         return res;
     }
-    public bool PositionInBounds()
+    private bool PositionInBounds()
     {
         (float x, float y) = Pos.Vector;
         (float maxX, float maxY) = Pos.Bounds;
-        (float xOffset, float yOffset) = hitbox.Offsets;
-        (float width, float height) = hitbox.Dimensions;
+        (float xOffset, float yOffset) = HitboxOffsets;
+        (float width, float height) = HitboxDimensions;
         return x + xOffset + width <= maxX && x + xOffset + width >= 0 &&
                y + yOffset + height <= maxY && y + yOffset + height >= 0;
     }
@@ -243,7 +237,7 @@ public class PhysicalEntity
             position.Set(x,y);
             entities = HitboxOverlapList();
             //foreach entinty in entities COLISION, luego chequear si me frena dentro del if
-            if(!PositionInBounds() || CollisionListStopsMovement(entities))
+            if(!PositionInBounds() || entities.Exists(CollisionStopsMovement))
             {
                 x -= stepX;
                 position.Set(x,y);
@@ -253,7 +247,7 @@ public class PhysicalEntity
             y += stepY;
             position.Set(x,y);
             entities = HitboxOverlapList();
-            if(!PositionInBounds() || CollisionListStopsMovement(entities))
+            if(!PositionInBounds() || entities.Exists(CollisionStopsMovement))
             {
                 y -= stepY;
                 position.Set(x,y);
@@ -265,11 +259,24 @@ public class PhysicalEntity
         movement.Reset();
         map.AddEntity(this);
     }
-    // Collide hace lo que tenga que hacer y devuelve "NO SIGAS MOVIENDOTE" ?
-    public bool CollisionListStopsMovement(List<PhysicalEntity> entities)
+    public virtual bool CollisionStopsMovement(PhysicalEntity ent)
     {
-        return entities.Count()>0; // toda PhysEnt por defecto frena al chocar con cualquier entidad
-    }                              // distintos hijos tendran overRide de este metodo
+        return this!=ent; // toda PhysEnt por defecto frena al chocar con cualquier entidad
+    }                     // distintos hijos tendran overRide de este metodo
+    private bool StandingOnPlatform()
+    {
+        // chequeo: si mi pos. fuera 1 pixel abajo...
+        // choco con alguien? y si choco, mi parte inferior esta arriba de su parte superior?
+        // entonces estoy parado encima.
+        (float x, float y) = PosVector;
+        position.Set(x,y+1);
+        List<PhysicalEntity> collisionList = new List<PhysicalEntity>();
+        collisionList = HitboxOverlapList();
+        bool res = collisionList.Exists(ent => CollisionStopsMovement(ent) && 
+                                               HitboxBottom <= ent.HitboxTop); // Y CRECE PARA ABAJO !
+        position.Set(x,y);
+        return res;
+    }
     public void Update()
     {
         // continuar animacion...
@@ -278,8 +285,8 @@ public class PhysicalEntity
     public void PrintVertices()
     {
         (float x, float y) = position.Vector;
-        (float xOffset, float yOffset) = hitbox.Offsets;
-        (float width, float height) = hitbox.Dimensions;
+        (float xOffset, float yOffset) = HitboxOffsets;
+        (float width, float height) = HitboxDimensions;
 
         float left   = x + xOffset;
         float top    = y + yOffset;
@@ -294,6 +301,13 @@ public class PhysicalEntity
     public Position Pos => position;
     public (float X,float Y) PosVector => position.Vector;
     public (float VX, float VY) MoveVector => movement.Vector;
+
+    public (float width, float height) HitboxDimensions => hitbox.Dimensions;
+    public (float offsetX, float offsetY) HitboxOffsets => hitbox.Offsets;
+    public float HitboxTop    => PosVector.Y + HitboxOffsets.offsetY;
+    public float HitboxBottom => PosVector.Y + HitboxOffsets.offsetY + HitboxDimensions.height;
+    public float HitboxLeft   => PosVector.X + HitboxOffsets.offsetX;
+    public float HitboxRight  => PosVector.X + HitboxOffsets.offsetX + HitboxDimensions.width;
 }
 public class Character : PhysicalEntity
 {
@@ -306,17 +320,9 @@ public class Character : PhysicalEntity
         this.name = name;
         this.hasGravity = hasGravity;
     }
-    private bool StandingOnPlatform()
+    public override bool CollisionStopsMovement(PhysicalEntity ent)
     {
-        // me fijo que unidades me chocarian si estuviera 1 pixel abajo
-        // si alguna es platform y su colision es con mi lado inferior, devuelvo true
-        (float x, float y) = PosVector;
-        (float maxX, float maxY) = Pos.Bounds;
-        Position probe = new Position(x,y+1,maxX,maxY); // voy a mirar 1 pixel abajo
-
-        List<PhysicalEntity> collisionList = new List<PhysicalEntity>();
-        collisionList = HitboxOverlapList();
-        return false;
+        return ent!=this && (ent is Character || ent is Platform);
     }
 }
 public class Platform : PhysicalEntity
@@ -332,7 +338,7 @@ public class Program
         int width = 600;
         int height = 200;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
-        PhysicalEntity player = new PhysicalEntity(200, 140, map, 32, 32);
+        PhysicalEntity player = new Character(200, 140, map, 32, 32, "nico");
         PhysicalEntity box = new Platform(303,160, map, 16, 16);
         while (true)
         {
