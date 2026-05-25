@@ -1,4 +1,5 @@
 ﻿// POR AHORA METO TODO EN 1 ARCHIVO el ultimo proyecto se me fue de las manos y tenia como 20 archivos distintos
+using Raylib_cs;
 public enum Facing
 {
     right,
@@ -44,9 +45,8 @@ public class MapGrid
             } 
         }  
     }
-    private List<PhysicalEntity> GetCellEntities(Position pos)
+    private List<PhysicalEntity> GetCellEntities(float x, float y)
     {
-        (float x, float y) = pos.Vector;
         int col = (int)x/cellSize;
         int row = (int)y/cellSize; // chequeo Out of bounds
         return grid[col][row]; // es una referencia, si modifico se modifica el objeto
@@ -96,46 +96,6 @@ public class MapGrid
     public float Height => height;
     public float Width => width;
 }
-public class Position
-{
-    private float x;
-    private float y;
-    private float maxX;
-    private float maxY;
-    // solo puedo tocar una posicion mediante sumar velocidades, sino solo lectura
-    public Position(float x, float y, float maxX, float maxY)
-    {
-        this.maxX = maxX;
-        this.maxY = maxY;
-        this.x = Math.Clamp(x, 0, maxX);
-        this.y = Math.Clamp(y, 0, maxY);
-    }
-    public void Set(float dx, float dy)
-    {
-        x = Math.Clamp(dx, 0, maxX);
-        y = Math.Clamp(dy, 0, maxY);
-    }
-    public (float X, float Y) Vector => (x, y);
-    public (float x, float y) Bounds => (maxX, maxY);
-}
-public class Movement
-{
-    private float vx;
-    private float vy;
-    public Movement(float vx = 0, float vy = 0)
-    {
-        this.vx = vx;
-        this.vy = vy;
-    }
-    public void Add(Movement movement)
-    {
-        (float dx, float dy) = movement.Vector;
-        vx += dx;
-        vy += dy;
-    }
-    public (float VX, float VY) Vector => (vx, vy);
-    public void Reset() => (vx, vy) = (0, 0);
-}
 public class Hitbox
 {
     private float xOffset;
@@ -154,26 +114,38 @@ public class Hitbox
 }
 public class PhysicalEntity
 {
-    private Position position;
-    private Movement movement;
+    private float x, y;
+    private float maxX, maxY;
+    private float vx, vy;
     private Hitbox hitbox;
     private MapGrid map;
     public PhysicalEntity(float x, float y, MapGrid map, float width, float height)
     {
         this.map = map;
-        movement = new Movement();
-        position = new Position(x, y, map.Width - 1, map.Height - 1);
+        this.maxX = map.Width - 1;
+        this.maxY = map.Height - 1;
+        this.x    = Math.Clamp(x, 0, maxX);
+        this.y    = Math.Clamp(y, 0, maxY);
+        vx = 0; vy = 0;
         hitbox = new Hitbox(width, height);
         this.map.AddEntity(this);
     }
-    public void AddMovement(Movement newMove)
+    public void AddVelocity(float vx, float vy)
     {
-        movement.Add(newMove);
+        this.vx += vx;
+        this.vy += vy;
+    }
+    public void resetVelocity(){
+        vx = 0;
+        vy = 0;
+    }
+    public void SetPosition(float nX, float nY){
+        x = Math.Clamp(nX,0,maxX);
+        y = Math.Clamp(nY,0,maxY);
     }
     public (int,int,int,int) GetHitboxMapCells()
     {
         // puede devolver out of bounds !!! 
-        (float x, float y) = position.Vector;
         (float xOffset, float yOffset) = HitboxOffsets;
         (float width, float height) = HitboxDimensions;
         return((int)(x + xOffset)/map.CellSize,(int)(x + xOffset + width)/map.CellSize,
@@ -182,13 +154,12 @@ public class PhysicalEntity
     public List<PhysicalEntity> HitboxOverlapList()
     {
         // calculo toda (x,y) que ocupa mi hitbox, devuelvo cuales physEnt choca
-        (float nx, float ny) = position.Vector;
         (float xOffset, float yOffset) = HitboxOffsets;
         (float width, float height) = hitbox.Dimensions;
-        int startX = (int)(nx + xOffset) / map.CellSize;
-        int endX   = (int)(nx + xOffset + width) / map.CellSize;
-        int startY = (int)(ny + yOffset) / map.CellSize;
-        int endY   = (int)(ny + yOffset + height) / map.CellSize;
+        int startX = (int)(x + xOffset) / map.CellSize;
+        int endX   = (int)(x + xOffset + width) / map.CellSize;
+        int startY = (int)(y + yOffset) / map.CellSize;
+        int endY   = (int)(y + yOffset + height) / map.CellSize;
         List<PhysicalEntity> res = new List<PhysicalEntity>();
         for (int x = startX; x <= endX; x++)
         {
@@ -201,8 +172,7 @@ public class PhysicalEntity
     }
     private bool PositionInBounds()
     {
-        (float x, float y) = Pos.Vector;
-        (float maxX, float maxY) = Pos.Bounds;
+        (float x, float y) = PosVector;
         (float xOffset, float yOffset) = HitboxOffsets;
         (float width, float height) = HitboxDimensions;
         return x + xOffset + width <= maxX && x + xOffset + width >= 0 &&
@@ -217,7 +187,6 @@ public class PhysicalEntity
         map.RemoveEntity(this);
 
         (float x, float y) =    PosVector;
-        (float maxX, float maxY) = Pos.Bounds;
 
         float maxSteps = Math.Max(Math.Abs(vx), Math.Abs(vy));
         (float stepX, float stepY) = (vx / maxSteps, vy / maxSteps);
@@ -228,29 +197,29 @@ public class PhysicalEntity
         {
             // si ya estoy en colision antes de moverme no lo detecto con este sistema
             x += stepX;
-            position.Set(x,y);
+            SetPosition(x,y);
             entities = HitboxOverlapList();
             //foreach entinty in entities COLISION, luego chequear si me frena dentro del if
             if(!PositionInBounds() || entities.Exists(CollisionStopsMovement))
             {
                 x -= stepX;
-                position.Set(x,y);
+                SetPosition(x,y);
                 stepX = 0;
             }
             // todo igual pero ahora con y
             y += stepY;
-            position.Set(x,y);
+            SetPosition(x,y);
             entities = HitboxOverlapList();
             if(!PositionInBounds() || entities.Exists(CollisionStopsMovement))
             {
                 y -= stepY;
-                position.Set(x,y);
+                SetPosition(x,y);
                 stepY = 0;
                 //this.Collide(that)
             }
         }
-        position.Set(x,y);
-        movement.Reset();
+        SetPosition(x,y);
+        resetVelocity();
         map.AddEntity(this);
     }
     public virtual bool CollisionStopsMovement(PhysicalEntity ent)
@@ -263,12 +232,12 @@ public class PhysicalEntity
         // choco con alguien? y si choco, mi parte inferior esta arriba de su parte superior?
         // entonces estoy parado encima.
         (float x, float y) = PosVector;
-        position.Set(x,y+1);
+        SetPosition(x,y+1);
         List<PhysicalEntity> collisionList = new List<PhysicalEntity>();
         collisionList = HitboxOverlapList();
         bool res = collisionList.Exists(ent => CollisionStopsMovement(ent) && 
                                                HitboxBottom <= ent.HitboxTop); // Y CRECE PARA ABAJO !
-        position.Set(x,y);
+        SetPosition(x,y);
         return res;
     }
     public void Update()
@@ -278,7 +247,6 @@ public class PhysicalEntity
     }
     public void PrintVertices()
     {
-        (float x, float y) = position.Vector;
         (float xOffset, float yOffset) = HitboxOffsets;
         (float width, float height) = HitboxDimensions;
 
@@ -292,16 +260,33 @@ public class PhysicalEntity
         Console.WriteLine("v3 " + (left,  bottom));  // bottom-left
         Console.WriteLine("v4 " + (right, bottom));  // bottom-right
     }
-    public Position Pos => position;
-    public (float X,float Y) PosVector => position.Vector;
-    public (float VX, float VY) MoveVector => movement.Vector;
+    public virtual void DrawDebug()
+    {
+        (float x, float y)       = PosVector;
+        (float xOff, float yOff) = HitboxOffsets;
+        (float w, float h)       = HitboxDimensions;
+ 
+        int rx = (int)(x + xOff);
+        int ry = (int)(y + yOff);
+        int rw = (int)w;
+        int rh = (int)h;
+ 
+        // relleno semitransparente + borde sólido
+        Raylib.DrawRectangle(rx, ry, rw, rh,
+            Color.White);
+        Raylib.DrawRectangleLines(rx, ry, rw, rh, Color.White);
+        // coordenadas en la esquina superior izquierda del rect
+        Raylib.DrawText($"({rx},{ry})", rx + 2, ry + 2, 8, Color.White);
+    }
+    public (float X, float Y)   PosVector  => (x, y);
+    public (float VX, float VY) MoveVector => (vx, vy);
 
     public (float width, float height) HitboxDimensions => hitbox.Dimensions;
     public (float offsetX, float offsetY) HitboxOffsets => hitbox.Offsets;
-    public float HitboxTop    => PosVector.Y + HitboxOffsets.offsetY;
-    public float HitboxBottom => PosVector.Y + HitboxOffsets.offsetY + HitboxDimensions.height;
-    public float HitboxLeft   => PosVector.X + HitboxOffsets.offsetX;
-    public float HitboxRight  => PosVector.X + HitboxOffsets.offsetX + HitboxDimensions.width;
+    public float HitboxTop    => y + HitboxOffsets.offsetY;
+    public float HitboxBottom => y + HitboxOffsets.offsetY + HitboxDimensions.height;
+    public float HitboxLeft   => x + HitboxOffsets.offsetX;
+    public float HitboxRight  => x + HitboxOffsets.offsetX + HitboxDimensions.width;
 }
 public class Character : PhysicalEntity
 {
@@ -326,31 +311,52 @@ public class Platform : PhysicalEntity
 }
 public class Program
 {
-    const int CELL_SIZE = 16;
+    const int CELL_SIZE    = 16;
+    const int SCREEN_W     = 640;
+    const int SCREEN_H     = 240;
+    const float MOVE_SPEED = 3f;
     public static void Main()
     {
-        int width = 600;
-        int height = 200;
+        int width = SCREEN_W;
+        int height = SCREEN_H;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
+
         PhysicalEntity player = new Character(0, 0, map, 32, 32, "nico");
         PhysicalEntity box = new Platform(320,128, map, 16, 16);
         PhysicalEntity floor = new Platform(0,192,map,600,8);
-        while (true)
+
+        List<PhysicalEntity> entities = new() { floor, box, player };
+
+        Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
+        Raylib.SetTargetFPS(60);
+        while (!Raylib.WindowShouldClose())
         {
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.W) player.AddMovement(new Movement(0,-32)); // arriba a abajo el eje y
-                if (key == ConsoleKey.S) player.AddMovement(new Movement(0,32));
-                if (key == ConsoleKey.A) player.AddMovement(new Movement(-32,0));
-                if (key == ConsoleKey.D) player.AddMovement(new Movement(32,0));
-                if (key == ConsoleKey.F) player.AddMovement(new Movement(0,0));
-                player.Move();
-                map.PrintMap(player);
-                player.PrintVertices();
-                Console.WriteLine("ahora la box");
-                box.PrintVertices();
-            }
+            if (Raylib.IsKeyDown(KeyboardKey.W)) player.AddVelocity(0, -MOVE_SPEED);
+            if (Raylib.IsKeyDown(KeyboardKey.S)) player.AddVelocity(0,  MOVE_SPEED);
+            if (Raylib.IsKeyDown(KeyboardKey.A)) player.AddVelocity(-MOVE_SPEED, 0);
+            if (Raylib.IsKeyDown(KeyboardKey.D)) player.AddVelocity(MOVE_SPEED, 0);
+            player.Move();
+
+            Raylib.BeginDrawing();
+            Raylib.ClearBackground(Color.Black);
+            // grid de referencia (opcional — comentar si molesta)
+            for (int col = 0; col <= width; col += CELL_SIZE)
+                Raylib.DrawLine(col, 0, col, height, new Color(40, 40, 40, 255));
+            for (int row = 0; row <= height; row += CELL_SIZE)
+                Raylib.DrawLine(0, row, width, row, new Color(40, 40, 40, 255));
+ 
+            // hitboxes
+            foreach (var ent in entities)
+                ent.DrawDebug();
+ 
+            // HUD con posición del jugador
+            (float px, float py) = player.PosVector;
+            Raylib.DrawText($"pos: ({px:F0}, {py:F0})  WASD para mover  ESC para salir",
+                            4, 4, 10, Color.White);
+ 
+            Raylib.EndDrawing();
+
         }
+        Raylib.CloseWindow();
     }
 }
