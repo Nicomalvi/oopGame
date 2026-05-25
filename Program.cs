@@ -45,12 +45,6 @@ public class MapGrid
             } 
         }  
     }
-    private List<PhysicalEntity> GetCellEntities(float x, float y)
-    {
-        int col = (int)x/cellSize;
-        int row = (int)y/cellSize; // chequeo Out of bounds
-        return grid[col][row]; // es una referencia, si modifico se modifica el objeto
-    }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
     {
         return grid[x][y];
@@ -151,24 +145,20 @@ public class PhysicalEntity
         return((int)(x + xOffset)/map.CellSize,(int)(x + xOffset + width)/map.CellSize,
                (int)(y + yOffset)/map.CellSize,(int)(y + yOffset + height)/map.CellSize);
     }
-    public List<PhysicalEntity> HitboxOverlapList()
+   public List<PhysicalEntity> HitboxOverlapList()
     {
-        // calculo toda (x,y) que ocupa mi hitbox, devuelvo cuales physEnt choca
-        (float xOffset, float yOffset) = HitboxOffsets;
-        (float width, float height) = hitbox.Dimensions;
-        int startX = (int)(x + xOffset) / map.CellSize;
-        int endX   = (int)(x + xOffset + width) / map.CellSize;
-        int startY = (int)(y + yOffset) / map.CellSize;
-        int endY   = (int)(y + yOffset + height) / map.CellSize;
-        List<PhysicalEntity> res = new List<PhysicalEntity>();
-        for (int x = startX; x <= endX; x++)
-        {
-            for (int y = startY; y <= endY; y++)
-            {   
-                res.AddRange(map.GetCellByIndex(x,y));
-            }
-        }
-        return res;
+        (int startX, int endX, int startY, int endY) = GetHitboxMapCells();
+        var res = new List<PhysicalEntity>();
+        for (int cx = startX; cx <= endX; cx++)
+            for (int cy = startY; cy <= endY; cy++)
+                res.AddRange(map.GetCellByIndex(cx, cy));
+
+        // filtro: de los vecinos de celda, solo los que realmente se solapan
+        return res.Where(ent => ent != this &&
+                                HitboxLeft   < ent.HitboxRight  &&
+                                HitboxRight  > ent.HitboxLeft   &&
+                                HitboxTop    < ent.HitboxBottom &&
+                                HitboxBottom > ent.HitboxTop).ToList();
     }
     private bool PositionInBounds()
     {
