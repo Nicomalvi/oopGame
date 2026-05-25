@@ -113,7 +113,7 @@ public class PhysicalEntity
     private float vx, vy;
     private Hitbox hitbox;
     private MapGrid map;
-    public PhysicalEntity(float x, float y, MapGrid map, float width, float height)
+    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, float xOffset = 0, float yOffset = 0)
     {
         this.map = map;
         this.maxX = map.Width - 1;
@@ -121,7 +121,7 @@ public class PhysicalEntity
         this.x    = Math.Clamp(x, 0, maxX);
         this.y    = Math.Clamp(y, 0, maxY);
         vx = 0; vy = 0;
-        hitbox = new Hitbox(width, height);
+        hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
     }
     public void AddVelocity(float vx, float vy)
@@ -147,13 +147,14 @@ public class PhysicalEntity
     }
    public List<PhysicalEntity> HitboxOverlapList()
     {
+        // me fijo cuales hitbox ocupan alguna celda en la que estoy
+        // luego, me fijo si hay colision
         (int startX, int endX, int startY, int endY) = GetHitboxMapCells();
         var res = new List<PhysicalEntity>();
         for (int cx = startX; cx <= endX; cx++)
             for (int cy = startY; cy <= endY; cy++)
                 res.AddRange(map.GetCellByIndex(cx, cy));
 
-        // filtro: de los vecinos de celda, solo los que realmente se solapan
         return res.Where(ent => ent != this &&
                                 HitboxLeft   < ent.HitboxRight  &&
                                 HitboxRight  > ent.HitboxLeft   &&
@@ -255,17 +256,18 @@ public class PhysicalEntity
         (float x, float y)       = PosVector;
         (float xOff, float yOff) = HitboxOffsets;
         (float w, float h)       = HitboxDimensions;
- 
+
+        // posición real con un cuadrado rojo para que se pueda ver
+        Raylib.DrawRectangle((int)x, (int)y, 16, 16, new Color(255, 0, 0, 120));
+        Raylib.DrawRectangleLines((int)x, (int)y, 16, 16, Color.Red);
+
+        // hitbox
         int rx = (int)(x + xOff);
         int ry = (int)(y + yOff);
         int rw = (int)w;
         int rh = (int)h;
- 
-        // relleno semitransparente + borde sólido
-        Raylib.DrawRectangle(rx, ry, rw, rh,
-            Color.White);
+        Raylib.DrawRectangle(rx, ry, rw, rh, Color.White);
         Raylib.DrawRectangleLines(rx, ry, rw, rh, Color.White);
-        // coordenadas en la esquina superior izquierda del rect
         Raylib.DrawText($"({rx},{ry})", rx + 2, ry + 2, 8, Color.White);
     }
     public (float X, float Y)   PosVector  => (x, y);
@@ -283,8 +285,8 @@ public class Character : PhysicalEntity
     private string name;
     private bool hasGravity;
     public Character(float x, float y, MapGrid map, float width, float height,
-                     string name, bool hasGravity = true) 
-                     : base(x,y,map,width,height) // llamo al constr. de PhysEnt
+                    string name, bool hasGravity = true,float xOffset = 0, float yOffset = 0) 
+                     : base(x,y,map,width,height,xOffset,yOffset) // llamo al constr. de PhysEnt
     {
         this.name = name;
         this.hasGravity = hasGravity;
@@ -296,7 +298,8 @@ public class Character : PhysicalEntity
 }
 public class Platform : PhysicalEntity
 {
-    public Platform(float x, float y, MapGrid map, float width, float height) : base(x,y,map,width,height){}
+    public Platform(float x, float y, MapGrid map, float width, float height,float xOffset = 0, float yOffset = 0) : 
+                    base(x,y,map,width,height,xOffset,yOffset){}
     // en un futuro: mi move hara que se muevan los de arriba mio, etc...
 }
 public class Program
@@ -311,7 +314,7 @@ public class Program
         int height = SCREEN_H;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
 
-        PhysicalEntity player = new Character(0, 0, map, 32, 32, "nico");
+        PhysicalEntity player = new Character(0, 0, map, 32, 64, "nico",true,4,0);
         PhysicalEntity box = new Platform(320,128, map, 16, 16);
         PhysicalEntity floor = new Platform(0,192,map,600,8);
 
