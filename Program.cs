@@ -138,12 +138,6 @@ public class Movement
 }
 public class Hitbox
 {
-    // Pienso....
-    // mapa de lugares que ocupan hitvoxes?
-    // problema ejemplo:
-    // A esta en 50,50
-    // B en 0,0 pero ocupa toda la pantalla
-    // cuando A se mueve a 51,50 tal vez no detecta colision pero en realidad si la hay
     private float xOffset;
     private float yOffset;
     private float width;
@@ -332,14 +326,15 @@ public class Platform : PhysicalEntity
 }
 public class Program
 {
-    const int CELL_SIZE = 32;
+    const int CELL_SIZE = 16;
     public static void Main()
     {
         int width = 600;
         int height = 200;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
-        PhysicalEntity player = new Character(200, 140, map, 32, 32, "nico");
-        PhysicalEntity box = new Platform(303,160, map, 16, 16);
+        PhysicalEntity player = new Character(0, 0, map, 32, 32, "nico");
+        PhysicalEntity box = new Platform(320,128, map, 16, 16);
+        PhysicalEntity floor = new Platform(0,192,map,600,8);
         while (true)
         {
             if (Console.KeyAvailable)
