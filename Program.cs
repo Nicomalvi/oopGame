@@ -11,11 +11,68 @@ public enum State
     walk,
     fall
 }
-public enum CollisionType
+
+public class LevelMatrix
 {
-    platform,   // choco con TODO
-    character,  // choco con plataformas, otros char.
-    item,       // choco solo con plataformas
+    // interpreto una lista de chars como un trozo del mapa (usando factories) y lo agrego al mapa
+    private List<char> level;
+    private MapGrid map;
+    private int offsetX,offsetY,width,length;
+    private int cellSize;
+    private Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>> factories;
+
+    public LevelMatrix(List<char> level, MapGrid map, int offsetX, int offsetY, int width, int length)
+    {
+        this.level = level;
+        this.map = map;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.width = width;
+        this.length = length;
+        cellSize = map.CellSize;
+        factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
+        {
+            ['1'] = (x, y, m) => new Platform(x, y, m, m.CellSize, m.CellSize),
+            ['@'] = (x, y, m) => new Character(x, y, m, m.CellSize, m.CellSize, "nico"),
+        };
+    }
+    public void Configure(List<char> level, int offsetX, int offsetY, int width, int length)
+    {
+        this.level = level;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.width = width;
+        this.length = length;
+    }
+    /*
+    -   -   -   -   -
+    -   -   -   -   -
+    1   1   1   -   -
+    -   -   -   -   -
+    -   -   -   @   -
+    esto seria un humano en (3,4) de tamaño CELL_SIZE x CELL_SIZE (depende de la factory)
+    con una plataforma en (0,2) de tamaño 3*CELL_SIZE x CELL_SIZE
+    */
+    public List<PhysicalEntity> Build()
+    {
+        List<PhysicalEntity> created = new List<PhysicalEntity>();
+        for (int row = 0; row < length; row++)
+        {
+            for (int col = 0; col < width; col++)
+            {
+                char c = level[row * width + col];
+                // posición en píxeles
+                // el offset esta en CELDAS, si fuera pixeles seria (offsetX + (col*cellSize))
+                float px = (offsetX + col) * cellSize;
+                float py = (offsetY + row) * cellSize;
+                if (factories.ContainsKey(c))
+                {
+                    created.Add(factories[c](px, py, map));
+                }
+            }
+        }
+        return created;
+    }
 }
 public class MapGrid
 {
@@ -302,6 +359,15 @@ public class Platform : PhysicalEntity
                     base(x,y,map,width,height,xOffset,yOffset){}
     // en un futuro: mi move hara que se muevan los de arriba mio, etc...
 }
+public class Item : PhysicalEntity
+{
+    public Item(float x, float y, MapGrid map, float width, float height,float xOffset = 0, float yOffset = 0) : 
+                base(x,y,map,width,height,xOffset,yOffset){}
+    public override bool CollisionStopsMovement(PhysicalEntity ent)
+    {
+        return ent!=this && (ent is Item || ent is Platform);
+    }
+}
 public class Program
 {
     const int CELL_SIZE    = 16;
@@ -313,12 +379,27 @@ public class Program
         int width = SCREEN_W;
         int height = SCREEN_H;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
+        List<char> level1 =
+        ['.','.','.','.','.'
+        ,'.','.','.','.','.'
+        ,'.','.','.','1','1'
+        ,'.','@','.','.','.'
+        ,'1','1','1','1','1'];
+        List<char> level2 =
+        ['.','.','.','.','.'
+        ,'.','1','1','1','.'
+        ,'.','1','1','1','.'
+        ,'.','1','1','1','.'
+        ,'1','1','1','1','1'];
 
-        PhysicalEntity player = new Character(0, 0, map, 32, 64, "nico",true,4,0);
-        PhysicalEntity box = new Platform(320,128, map, 16, 16);
-        PhysicalEntity floor = new Platform(0,192,map,600,8);
+        LevelMatrix matrix = new LevelMatrix(level1, map, 0, 0, 5, 5);
+        List<PhysicalEntity> entities = matrix.Build();
+        matrix.Configure(level2,5,0,5,5);
+        entities.AddRange(matrix.Build());
+        matrix.Configure(level2,10,0,5,5);
+        entities.AddRange(matrix.Build());
 
-        List<PhysicalEntity> entities = new() { floor, box, player };
+        Character player = (Character)entities.Find(e => e is Character)!;
 
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
