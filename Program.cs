@@ -1,86 +1,6 @@
 ﻿// POR AHORA METO TODO EN 1 ARCHIVO el ultimo proyecto se me fue de las manos y tenia como 20 archivos distintos
 using Raylib_cs;
 // =====================================================================================================
-// CREADOR DE NIVELES
-// =====================================================================================================
-public class ChunkCreator
-{
-    // interpreto una lista de chars como un trozo del mapa (usando factories) y lo agrego al mapa
-    private string level;
-    private MapGrid map;
-    private int columnOffset,rowOffset,width,length;
-    private int cellSize;
-    private Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>> factories;
-
-    public ChunkCreator(string level, MapGrid map, int columnOffset, int rowOffset, int width, int length)
-    {
-        this.level = level;
-        this.map = map;
-        this.columnOffset = columnOffset;
-        this.rowOffset = rowOffset;
-        this.width = width;
-        this.length = length;
-        cellSize = map.CellSize;
-        factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
-        {
-            // pared, hitbox tamaño cellSize x cellSize
-            ['1'] = (x, y, m) => new Platform(x, y, m, m.CellSize, m.CellSize),
-            // nico, hitbox tamaño cellSize/2 x cellSize/2
-            ['@'] = (x, y, m) => new Character(x, y, m, m.CellSize/2, m.CellSize/2, "nico"),
-        };
-    }
-    public void Configure(string level, int columnOffset, int rowOffset, int width, int length)
-    {
-        // preparo 1 chunk exacto para buildear
-        this.level = level;
-        this.columnOffset = columnOffset;
-        this.rowOffset = rowOffset;
-        this.width = width;
-        this.length = length;
-    }
-    public List<PhysicalEntity> MatrixConfigureAndBuild(string[][] chunks, int chunkWidth, int chunkHeight, int startCol, int startRow)
-    {
-        // buildeo una lista de chunks de mismo tamaño en cierta pos. del mapa
-        int rows = chunks.Count();
-        int columns = chunks[0].Count();
-        List<PhysicalEntity> created_entities = new List<PhysicalEntity>();
-        for(int row = 0; row < rows; row++)
-        {
-            for(int col = 0; col < columns; col++)
-            {
-                string chunk = chunks[row][col];
-                Configure(chunk,
-                         (startCol + col)*chunkWidth,
-                         (startRow + row)*chunkHeight,
-                         chunkWidth,
-                         chunkHeight);
-                created_entities.AddRange(Build());
-            }
-        }
-        return created_entities;
-    }
-    public List<PhysicalEntity> Build()
-    {
-        List<PhysicalEntity> created = new List<PhysicalEntity>();
-        for (int row = 0; row < length; row++)
-        {
-            for (int col = 0; col < width; col++)
-            {
-                char c = level[row * width + col];
-                // posición en píxeles
-                // el offset esta en CELDAS, si fuera pixeles seria (offsetX + (col*cellSize))
-                float px = (columnOffset + col) * cellSize;
-                float py = (rowOffset + row) * cellSize;
-                if (factories.ContainsKey(c))
-                {
-                    created.Add(factories[c](px, py, map));
-                }
-            }
-        }
-        return created;
-    }
-}
-// =====================================================================================================
 // MAPA DE HITBOXES
 // =====================================================================================================
 public class MapGrid
@@ -91,6 +11,7 @@ public class MapGrid
     private int cellSize;
     private float width;
     private float height;
+    private Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>> factories;
 
     public MapGrid(int width, int height, int cellSize)
     {
@@ -110,6 +31,13 @@ public class MapGrid
                 grid[i][j] = new List<PhysicalEntity>();
             } 
         }  
+        factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
+        {
+            // pared, hitbox tamaño cellSize x cellSize
+            ['1'] = (x, y, m) => new Platform(x, y, m, m.CellSize, m.CellSize),
+            // nico, hitbox tamaño cellSize/2 x cellSize/2
+            ['@'] = (x, y, m) => new Character(x, y, m, m.CellSize/2, m.CellSize/2, "nico"),
+        };
     }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
     {
@@ -148,6 +76,37 @@ public class MapGrid
         }
         (float x, float y) = player.PosVector;
         Console.WriteLine("(" + x + ", " + y + ")");
+    }
+    public List<PhysicalEntity> CreateChunks(string[][] chunks, int rowOffset, int colOffset, int chunkRows, int chunkCols)
+    {
+        int rows = chunks.Count();
+        int cols = chunks[0].Count();
+        List<PhysicalEntity> created = new List<PhysicalEntity>();
+        for(int row = 0; row < rows; row++)
+        {
+            for(int col = 0; col<cols; col++)
+            {
+                string currentChunk = chunks[row][col];
+                for(int chunkRow = 0; chunkRow<chunkRows; chunkRow++)
+                {
+                    for(int chunkCol = 0; chunkCol<chunkCols; chunkCol++)
+                    {
+                        char c = currentChunk[chunkRow * chunkCols + chunkCol];
+                        // raro porque uso 1 string en vez de matriz de chars
+                        // basicamente dice: para llegar a row actual salteo todos los caracteres
+                        // hasta fila actual * cantidad columnas
+
+                        float px = ((colOffset + col) * chunkCols + chunkCol) * cellSize;
+                        float py = ((rowOffset + row) * chunkRows + chunkRow) * cellSize;
+                        if (factories.ContainsKey(c))
+                        {
+                            created.Add(factories[c](px, py, this));
+                        }
+                    }
+                }
+            }
+        }
+        return created;
     }
     //public PhysicalEntity?[][] Grid => grid;
     public int Cols => cols;
@@ -252,11 +211,13 @@ public class PhysicalEntity
         return x + xOffset + width <= maxX && x + xOffset + width >= 0 &&
                y + yOffset + height <= maxY && y + yOffset + height >= 0;
     }
-    public void Move()
+    public void Move(float dt)
     {
         // me voy moviendo de a 1 paso
         // si detecto una colision, chequeo si me hace frenar, chequeo efectos de la colision
         (float vx, float vy) =  MoveVector;
+        vx *= dt; // multiplico por frameTime
+        vy *= dt;
         if(MoveVector == (0,0)){return;}
         map.RemoveEntity(this);
 
@@ -318,7 +279,7 @@ public class PhysicalEntity
     {
         if(MoveVector.VX != 0 || MoveVector.VY != 0)
         {
-            Move();
+            Move(Raylib.GetFrameTime());
         }
     }
     public void PrintVertices()
@@ -388,7 +349,7 @@ public class Character : PhysicalEntity
         }
         if(MoveVector.VX != 0 || MoveVector.VY != 0)
         {
-            Move();
+            Move(Raylib.GetFrameTime());
         }
     }
 }
@@ -416,7 +377,7 @@ public class Program
     const int CELL_SIZE    = 32;
     const int SCREEN_W     = 960;
     const int SCREEN_H     = 560;
-    const float MOVE_SPEED = 3f;
+    const float MOVE_SPEED = 50;
     public static void Main()
     {
         int width = SCREEN_W;
@@ -443,10 +404,8 @@ public class Program
         string[][]chunks = [[level1,level1,level2,level1,level1,level3],
                             [level1,level1,level2,level2,level2,level3],
                             [level1,level1,level2,level2,level2,level3]];
-        ChunkCreator matrix = new ChunkCreator(level1, map, 0, 0, 5, 5);
-        List<PhysicalEntity> entities = matrix.MatrixConfigureAndBuild(chunks,5,5,0,0);
+        List<PhysicalEntity> entities = map.CreateChunks(chunks,0,0,5,5);
         Character player = (Character)entities.Find(e => e is Character)!;
-
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
         while (!Raylib.WindowShouldClose())
