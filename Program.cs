@@ -1,58 +1,64 @@
 ﻿// POR AHORA METO TODO EN 1 ARCHIVO el ultimo proyecto se me fue de las manos y tenia como 20 archivos distintos
 using Raylib_cs;
-public enum Facing
-{
-    right,
-    left
-}
-public enum State
-{
-    idle,
-    walk,
-    fall
-}
-
-public class LevelMatrix
+// =====================================================================================================
+// CREADOR DE NIVELES
+// =====================================================================================================
+public class ChunkCreator
 {
     // interpreto una lista de chars como un trozo del mapa (usando factories) y lo agrego al mapa
-    private List<char> level;
+    private string level;
     private MapGrid map;
-    private int offsetX,offsetY,width,length;
+    private int columnOffset,rowOffset,width,length;
     private int cellSize;
     private Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>> factories;
 
-    public LevelMatrix(List<char> level, MapGrid map, int offsetX, int offsetY, int width, int length)
+    public ChunkCreator(string level, MapGrid map, int columnOffset, int rowOffset, int width, int length)
     {
         this.level = level;
         this.map = map;
-        this.offsetX = offsetX;
-        this.offsetY = offsetY;
+        this.columnOffset = columnOffset;
+        this.rowOffset = rowOffset;
         this.width = width;
         this.length = length;
         cellSize = map.CellSize;
         factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
         {
+            // pared, hitbox tamaño cellSize x cellSize
             ['1'] = (x, y, m) => new Platform(x, y, m, m.CellSize, m.CellSize),
-            ['@'] = (x, y, m) => new Character(x, y, m, m.CellSize, m.CellSize, "nico"),
+            // nico, hitbox tamaño cellSize/2 x cellSize/2
+            ['@'] = (x, y, m) => new Character(x, y, m, m.CellSize/2, m.CellSize/2, "nico"),
         };
     }
-    public void Configure(List<char> level, int offsetX, int offsetY, int width, int length)
+    public void Configure(string level, int columnOffset, int rowOffset, int width, int length)
     {
+        // preparo 1 chunk exacto para buildear
         this.level = level;
-        this.offsetX = offsetX;
-        this.offsetY = offsetY;
+        this.columnOffset = columnOffset;
+        this.rowOffset = rowOffset;
         this.width = width;
         this.length = length;
     }
-    /*
-    -   -   -   -   -
-    -   -   -   -   -
-    1   1   1   -   -
-    -   -   -   -   -
-    -   -   -   @   -
-    esto seria un humano en (3,4) de tamaño CELL_SIZE x CELL_SIZE (depende de la factory)
-    con una plataforma en (0,2) de tamaño 3*CELL_SIZE x CELL_SIZE
-    */
+    public List<PhysicalEntity> MatrixConfigureAndBuild(string[][] chunks, int chunkWidth, int chunkHeight, int startCol, int startRow)
+    {
+        // buildeo una lista de chunks de mismo tamaño en cierta pos. del mapa
+        int rows = chunks.Count();
+        int columns = chunks[0].Count();
+        List<PhysicalEntity> created_entities = new List<PhysicalEntity>();
+        for(int row = 0; row < rows; row++)
+        {
+            for(int col = 0; col < columns; col++)
+            {
+                string chunk = chunks[row][col];
+                Configure(chunk,
+                         (startCol + col)*chunkWidth,
+                         (startRow + row)*chunkHeight,
+                         chunkWidth,
+                         chunkHeight);
+                created_entities.AddRange(Build());
+            }
+        }
+        return created_entities;
+    }
     public List<PhysicalEntity> Build()
     {
         List<PhysicalEntity> created = new List<PhysicalEntity>();
@@ -63,8 +69,8 @@ public class LevelMatrix
                 char c = level[row * width + col];
                 // posición en píxeles
                 // el offset esta en CELDAS, si fuera pixeles seria (offsetX + (col*cellSize))
-                float px = (offsetX + col) * cellSize;
-                float py = (offsetY + row) * cellSize;
+                float px = (columnOffset + col) * cellSize;
+                float py = (rowOffset + row) * cellSize;
                 if (factories.ContainsKey(c))
                 {
                     created.Add(factories[c](px, py, map));
@@ -74,6 +80,9 @@ public class LevelMatrix
         return created;
     }
 }
+// =====================================================================================================
+// MAPA DE HITBOXES
+// =====================================================================================================
 public class MapGrid
 {
     private List<PhysicalEntity>[][] grid;
@@ -147,6 +156,9 @@ public class MapGrid
     public float Height => height;
     public float Width => width;
 }
+// =====================================================================================================
+// HITBOX
+// =====================================================================================================
 public class Hitbox
 {
     private float xOffset;
@@ -163,6 +175,20 @@ public class Hitbox
     public (float x,float y) Offsets => (xOffset, yOffset);
     public (float x, float y) Dimensions => (width, height);
 }
+public enum Facing
+{
+    right,
+    left
+}
+public enum State
+{
+    idle,
+    walk,
+    fall
+}
+// =====================================================================================================
+// PHYSENT
+// =====================================================================================================
 public class PhysicalEntity
 {
     private float x, y;
@@ -288,10 +314,12 @@ public class PhysicalEntity
         SetPosition(x,y);
         return res;
     }
-    public void Update()
+    public virtual void Update()
     {
-        // continuar animacion...
-        // ticks de veneno... (quizas no va esto aca ahora que hice hijos de la clase)
+        if(MoveVector.VX != 0 || MoveVector.VY != 0)
+        {
+            Move();
+        }
     }
     public void PrintVertices()
     {
@@ -342,7 +370,7 @@ public class Character : PhysicalEntity
     private string name;
     private bool hasGravity;
     public Character(float x, float y, MapGrid map, float width, float height,
-                    string name, bool hasGravity = true,float xOffset = 0, float yOffset = 0) 
+                     string name, bool hasGravity = true,float xOffset = 0, float yOffset = 0) 
                      : base(x,y,map,width,height,xOffset,yOffset) // llamo al constr. de PhysEnt
     {
         this.name = name;
@@ -352,11 +380,23 @@ public class Character : PhysicalEntity
     {
         return ent!=this && (ent is Character || ent is Platform);
     }
+    public override void Update()
+    {
+        if(hasGravity)
+        {
+            AddVelocity(0,1);
+        }
+        if(MoveVector.VX != 0 || MoveVector.VY != 0)
+        {
+            Move();
+        }
+    }
 }
 public class Platform : PhysicalEntity
 {
     public Platform(float x, float y, MapGrid map, float width, float height,float xOffset = 0, float yOffset = 0) : 
                     base(x,y,map,width,height,xOffset,yOffset){}
+                    
     // en un futuro: mi move hara que se muevan los de arriba mio, etc...
 }
 public class Item : PhysicalEntity
@@ -368,37 +408,43 @@ public class Item : PhysicalEntity
         return ent!=this && (ent is Item || ent is Platform);
     }
 }
+// =====================================================================================================
+// GAME LOOP
+// =====================================================================================================
 public class Program
 {
-    const int CELL_SIZE    = 16;
-    const int SCREEN_W     = 640;
-    const int SCREEN_H     = 240;
+    const int CELL_SIZE    = 32;
+    const int SCREEN_W     = 960;
+    const int SCREEN_H     = 560;
     const float MOVE_SPEED = 3f;
     public static void Main()
     {
         int width = SCREEN_W;
         int height = SCREEN_H;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
-        List<char> level1 =
-        ['.','.','.','.','.'
-        ,'.','.','.','.','.'
-        ,'.','.','.','1','1'
-        ,'.','@','.','.','.'
-        ,'1','1','1','1','1'];
-        List<char> level2 =
-        ['.','.','.','.','.'
-        ,'.','1','1','1','.'
-        ,'.','1','1','1','.'
-        ,'.','1','1','1','.'
-        ,'1','1','1','1','1'];
-
-        LevelMatrix matrix = new LevelMatrix(level1, map, 0, 0, 5, 5);
-        List<PhysicalEntity> entities = matrix.Build();
-        matrix.Configure(level2,5,0,5,5);
-        entities.AddRange(matrix.Build());
-        matrix.Configure(level2,10,0,5,5);
-        entities.AddRange(matrix.Build());
-
+        string level1 =
+        "....." +
+        "....." +
+        "...11" +
+        ".@..." +
+        "11111";
+        string level2 = 
+        "1.1.1" +
+        "....1" +
+        "....." +
+        "....." +
+        "11111";
+        string level3 =
+        "11.11" +
+        "....1" +
+        ".1111" +
+        "....1" +
+        "11.11";
+        string[][]chunks = [[level1,level1,level2,level1,level1,level3],
+                            [level1,level1,level2,level2,level2,level3],
+                            [level1,level1,level2,level2,level2,level3]];
+        ChunkCreator matrix = new ChunkCreator(level1, map, 0, 0, 5, 5);
+        List<PhysicalEntity> entities = matrix.MatrixConfigureAndBuild(chunks,5,5,0,0);
         Character player = (Character)entities.Find(e => e is Character)!;
 
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
@@ -409,7 +455,7 @@ public class Program
             if (Raylib.IsKeyDown(KeyboardKey.S)) player.AddVelocity(0,  MOVE_SPEED);
             if (Raylib.IsKeyDown(KeyboardKey.A)) player.AddVelocity(-MOVE_SPEED, 0);
             if (Raylib.IsKeyDown(KeyboardKey.D)) player.AddVelocity(MOVE_SPEED, 0);
-            player.Move();
+            player.Update();
 
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
