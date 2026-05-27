@@ -256,6 +256,7 @@ public class PhysicalEntity
                 x -= stepX;
                 SetPosition(x,y);
                 stepX = 0;
+                SetVelocity(0,this.vy);
             }
             // todo igual pero ahora con y
             y += stepY;
@@ -266,7 +267,7 @@ public class PhysicalEntity
                 y -= stepY;
                 SetPosition(x,y);
                 stepY = 0;
-                //this.Collide(that)
+                SetVelocity(this.vx,0);
             }
         }
         SetPosition(x,y);
@@ -362,15 +363,15 @@ public class Actor
     // controller (decido que hacer con ia x o ia y, o con input de player...)
     private PhysicalEntity body;
     private List<Behavior> behaviors;
-    private float acceleration; 
+    private float moveSpeed; 
 
-    public Actor(PhysicalEntity body, List<Behavior> behaviors, float acceleration)
+    public Actor(PhysicalEntity body, List<Behavior> behaviors, float moveSpeed)
     {
         this.body = body;
         this.behaviors = behaviors
             .OrderByDescending(b => b.Priority)
             .ToList();
-        this.acceleration = acceleration;  
+        this.moveSpeed = moveSpeed;  
     }
 
     public void Update()
@@ -399,7 +400,7 @@ public class Actor
         dirX /= length;
         dirY /= length;
 
-        body.AddVelocity(dirX * acceleration * dt,dirY * acceleration * dt);
+        body.SetVelocity(dirX * moveSpeed, dirY * moveSpeed);
     }
 
     public PhysicalEntity Body => body;
@@ -426,7 +427,6 @@ public class Program
     const int CELL_SIZE    = 32;
     const int SCREEN_W     = 960;
     const int SCREEN_H     = 640;
-    const float MOVE_SPEED = 300;
     public static void Main()
     {
         int width = SCREEN_W;
@@ -454,29 +454,56 @@ public class Program
         "....1"+
         "....1"+
         "....1"+
-        "...@1"+
+        "....1"+
         "11111";
         string[][]chunks = [[topLeftCorner,topRightCorner],
                             [bottomLeftCorner,bottomRightCorner]];
         List<PhysicalEntity> entities = map.CreateChunks(chunks,0,0,5,5);
-        PhysicalEntity player = entities.Find(e => e.HitboxDimensions == (map.CellSize/2,map.CellSize/2))!;
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
         float dt;
+        PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16,1024);
+        entities.Add(playerBody); // placeholder
+
+        List<Behavior> noBehavior = new List<Behavior>();
+        Actor player = new Actor(playerBody,noBehavior,320);
+        List<Actor> actors = new List<Actor>();
+        actors.Add(player);
+
         while (!Raylib.WindowShouldClose())
         {
             // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
             dt = Raylib.GetFrameTime();
-            if (Raylib.IsKeyDown(KeyboardKey.W)) player.AddVelocity(0, -MOVE_SPEED*3);
-            if (Raylib.IsKeyDown(KeyboardKey.S)) player.AddVelocity(0,  MOVE_SPEED);
-            if (Raylib.IsKeyDown(KeyboardKey.A)) player.AddVelocity(-MOVE_SPEED, 0);
-            if (Raylib.IsKeyDown(KeyboardKey.D)) player.AddVelocity(MOVE_SPEED, 0);
+            //===================================================================================================================
+            // input player
+            //===================================================================================================================
+            float dirX = 0;
+            float dirY = 0;
+
+            if (Raylib.IsKeyDown(KeyboardKey.W)) dirY -= 1;
+            if (Raylib.IsKeyDown(KeyboardKey.S)) dirY += 1;
+            if (Raylib.IsKeyDown(KeyboardKey.A)) dirX -= 1;
+            if (Raylib.IsKeyDown(KeyboardKey.D)) dirX += 1;
+
             if (!(Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.S) || Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.D)))
             {
-                player.SetVelocity(0,0);
+                player.Body.SetVelocity(0,0);
             }
-            player.Update(dt);
-
+            player.MoveTowards(dirX, dirY, dt);
+            //===================================================================================================================
+            // actuan todos
+            //===================================================================================================================
+            foreach (Actor actor in actors)
+            {
+                actor.Update();
+            }
+            foreach (PhysicalEntity entity in entities)
+            {
+                entity.Update(dt);
+            }
+            //===================================================================================================================
+            // renders
+            //===================================================================================================================
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
             // grid de referencia (opcional — comentar si molesta)
@@ -484,18 +511,10 @@ public class Program
                 Raylib.DrawLine(col, 0, col, height, new Color(40, 40, 40, 255));
             for (int row = 0; row <= height; row += CELL_SIZE)
                 Raylib.DrawLine(0, row, width, row, new Color(40, 40, 40, 255));
- 
-            // hitboxes
+            // hitboxes PLACEHOLDER
             foreach (var ent in entities)
                 ent.DrawDebug();
- 
-            // HUD con posición del jugador
-            (float px, float py) = player.PosVector;
-            Raylib.DrawText($"pos: ({px:F0}, {py:F0})  WASD para mover  ESC para salir",
-                            4, 4, 10, Color.White);
- 
             Raylib.EndDrawing();
-
         }
         Raylib.CloseWindow();
     }
