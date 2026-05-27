@@ -34,9 +34,9 @@ public class MapGrid
         factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
         {
             // pared, hitbox tamaño cellSize x cellSize
-            ['1'] = (x, y, m) => new Platform(x, y, m, m.CellSize, m.CellSize),
+            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize, m.CellSize, 64),
             // nico, hitbox tamaño cellSize/2 x cellSize/2
-            ['@'] = (x, y, m) => new Character(x, y, m, m.CellSize/2, m.CellSize/2, "nico"),
+            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize/2, m.CellSize/2, 320),
         };
     }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
@@ -153,15 +153,17 @@ public class PhysicalEntity
     private float x, y;
     private float maxX, maxY;
     private float vx, vy;
+    private float maxSpeed;
     private Hitbox hitbox;
     private MapGrid map;
-    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, float xOffset = 0, float yOffset = 0)
+    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, float maxSpeed, float xOffset = 0, float yOffset = 0)
     {
         this.map = map;
         this.maxX = map.Width - 1;
         this.maxY = map.Height - 1;
         this.x    = Math.Clamp(x, 0, maxX);
         this.y    = Math.Clamp(y, 0, maxY);
+        this.maxSpeed = maxSpeed;
         vx = 0; vy = 0;
         hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
@@ -170,10 +172,24 @@ public class PhysicalEntity
     {
         this.vx += vx;
         this.vy += vy;
+        ClampVelocity();
     }
-    public void resetVelocity(){
-        vx = 0;
-        vy = 0;
+    public void SetVelocity(float vx, float vy)
+    {
+        this.vx = vx;
+        this.vy = vy;
+        ClampVelocity();
+    }
+    private void ClampVelocity()
+    {
+        // si estoy yendo en diagonal voy "mas rapido"
+        // calculo la velocidad y si me pase la reduzco sin cambiar la dir.
+        float speed = MathF.Sqrt(vx * vx + vy * vy);
+        if(speed > maxSpeed)
+        {
+            vx = vx / speed * maxSpeed;
+            vy = vy / speed * maxSpeed;
+        }
     }
     public void SetPosition(float nX, float nY){
         x = Math.Clamp(nX,0,maxX);
@@ -254,7 +270,6 @@ public class PhysicalEntity
             }
         }
         SetPosition(x,y);
-        resetVelocity();
         map.AddEntity(this);
     }
     public virtual bool CollisionStopsMovement(PhysicalEntity ent)
@@ -275,11 +290,11 @@ public class PhysicalEntity
         SetPosition(x,y);
         return res;
     }
-    public virtual void Update()
+    public virtual void Update(float dt)
     {
         if(MoveVector.VX != 0 || MoveVector.VY != 0)
         {
-            Move(Raylib.GetFrameTime());
+            Move(dt);
         }
     }
     public void PrintVertices()
@@ -325,49 +340,83 @@ public class PhysicalEntity
     public float HitboxBottom => y + HitboxOffsets.offsetY + HitboxDimensions.height;
     public float HitboxLeft   => x + HitboxOffsets.offsetX;
     public float HitboxRight  => x + HitboxOffsets.offsetX + HitboxDimensions.width;
+
+    public MapGrid Map => map;
 }
-public class Character : PhysicalEntity
+public class Behavior
 {
-    private string name;
-    private bool hasGravity;
-    public Character(float x, float y, MapGrid map, float width, float height,
-                     string name, bool hasGravity = true,float xOffset = 0, float yOffset = 0) 
-                     : base(x,y,map,width,height,xOffset,yOffset) // llamo al constr. de PhysEnt
+    // devuelve true si la behavior actuó
+    // devuelve false si no hizo nada
+    public Func<bool> Execute;
+    // mayor prioridad = se chequea primero
+    public int Priority;
+
+    public Behavior(Func<bool> execute, int priority)
     {
-        this.name = name;
-        this.hasGravity = hasGravity;
+        Execute = execute;
+        Priority = priority;
     }
-    public override bool CollisionStopsMovement(PhysicalEntity ent)
+}
+public class Actor
+{
+    // controller (decido que hacer con ia x o ia y, o con input de player...)
+    private PhysicalEntity body;
+    private List<Behavior> behaviors;
+    private float acceleration; 
+
+    public Actor(PhysicalEntity body, List<Behavior> behaviors, float acceleration)
     {
-        return ent!=this && (ent is Character || ent is Platform);
+        this.body = body;
+        this.behaviors = behaviors
+            .OrderByDescending(b => b.Priority)
+            .ToList();
+        this.acceleration = acceleration;  
     }
-    public override void Update()
+
+    public void Update()
     {
-        if(hasGravity)
+        foreach (Behavior behavior in behaviors)
         {
-            AddVelocity(0,1);
-        }
-        if(MoveVector.VX != 0 || MoveVector.VY != 0)
-        {
-            Move(Raylib.GetFrameTime());
+            if (behavior.Execute())
+            {
+                break;
+            }
         }
     }
-}
-public class Platform : PhysicalEntity
-{
-    public Platform(float x, float y, MapGrid map, float width, float height,float xOffset = 0, float yOffset = 0) : 
-                    base(x,y,map,width,height,xOffset,yOffset){}
-                    
-    // en un futuro: mi move hara que se muevan los de arriba mio, etc...
-}
-public class Item : PhysicalEntity
-{
-    public Item(float x, float y, MapGrid map, float width, float height,float xOffset = 0, float yOffset = 0) : 
-                base(x,y,map,width,height,xOffset,yOffset){}
-    public override bool CollisionStopsMovement(PhysicalEntity ent)
+
+    public void MoveTowards(float dirX, float dirY, float dt)
     {
-        return ent!=this && (ent is Item || ent is Platform);
+        // paso un punto (x,y) en el mapa
+        // el actor intenta ir hacia allí con su velocidad
+        if(dirX == 0 && dirY == 0)
+            return;
+        float length = MathF.Sqrt(dirX * dirX + dirY * dirY);
+        // hago pitagoras para ver cuanto mide el vector
+        // divido el vector por lo que mide asi lo normalizo
+        // nuevo vector <= (1,1)
+        // multiplico mi velocidad por eso
+        // (sino ir por ejemplo de una a (8,5)*velocidad iria rapidisimo)
+        dirX /= length;
+        dirY /= length;
+
+        body.AddVelocity(dirX * acceleration * dt,dirY * acceleration * dt);
     }
+
+    public PhysicalEntity Body => body;
+    // mismos getters que body para un trabajo mas limpio
+    // hace falta? puedo traer el body y ver eso...
+    // actor = api publica
+    public (float X, float Y)   PosVector  => body.PosVector;
+    public (float VX, float VY) MoveVector => body.MoveVector;
+
+    public (float width, float height) HitboxDimensions => body.HitboxDimensions;
+    public (float offsetX, float offsetY) HitboxOffsets => body.HitboxOffsets;
+    public float HitboxTop    => body.HitboxTop;
+    public float HitboxBottom => body.HitboxBottom;
+    public float HitboxLeft   => body.HitboxLeft;
+    public float HitboxRight  => body.HitboxRight;
+
+    public MapGrid Map => body.Map;
 }
 // =====================================================================================================
 // GAME LOOP
@@ -376,45 +425,57 @@ public class Program
 {
     const int CELL_SIZE    = 32;
     const int SCREEN_W     = 960;
-    const int SCREEN_H     = 560;
-    const float MOVE_SPEED = 50;
+    const int SCREEN_H     = 640;
+    const float MOVE_SPEED = 300;
     public static void Main()
     {
         int width = SCREEN_W;
         int height = SCREEN_H;
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
-        string level1 =
-        "....." +
-        "....." +
-        "...11" +
-        ".@..." +
+        string topLeftCorner = 
+        "11111"+
+        "1...."+
+        "1...."+
+        "1...."+
+        "1....";
+        string topRightCorner = 
+        "11111"+
+        "....1"+
+        "....1"+
+        "....1"+
+        "....1";
+        string bottomLeftCorner = 
+        "1...."+
+        "1...."+
+        "1...."+
+        "1...."+
         "11111";
-        string level2 = 
-        "1.1.1" +
-        "....1" +
-        "....." +
-        "....." +
+        string bottomRightCorner = 
+        "....1"+
+        "....1"+
+        "....1"+
+        "...@1"+
         "11111";
-        string level3 =
-        "11.11" +
-        "....1" +
-        ".1111" +
-        "....1" +
-        "11.11";
-        string[][]chunks = [[level1,level1,level2,level1,level1,level3],
-                            [level1,level1,level2,level2,level2,level3],
-                            [level1,level1,level2,level2,level2,level3]];
+        string[][]chunks = [[topLeftCorner,topRightCorner],
+                            [bottomLeftCorner,bottomRightCorner]];
         List<PhysicalEntity> entities = map.CreateChunks(chunks,0,0,5,5);
-        Character player = (Character)entities.Find(e => e is Character)!;
+        PhysicalEntity player = entities.Find(e => e.HitboxDimensions == (map.CellSize/2,map.CellSize/2))!;
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
+        float dt;
         while (!Raylib.WindowShouldClose())
         {
-            if (Raylib.IsKeyDown(KeyboardKey.W)) player.AddVelocity(0, -MOVE_SPEED);
+            // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
+            dt = Raylib.GetFrameTime();
+            if (Raylib.IsKeyDown(KeyboardKey.W)) player.AddVelocity(0, -MOVE_SPEED*3);
             if (Raylib.IsKeyDown(KeyboardKey.S)) player.AddVelocity(0,  MOVE_SPEED);
             if (Raylib.IsKeyDown(KeyboardKey.A)) player.AddVelocity(-MOVE_SPEED, 0);
             if (Raylib.IsKeyDown(KeyboardKey.D)) player.AddVelocity(MOVE_SPEED, 0);
-            player.Update();
+            if (!(Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.S) || Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.D)))
+            {
+                player.SetVelocity(0,0);
+            }
+            player.Update(dt);
 
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
