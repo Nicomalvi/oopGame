@@ -348,15 +348,17 @@ public class Behavior
 {
     // devuelve true si la behavior actuó
     // devuelve false si no hizo nada
-    public Func<bool> Execute;
+    private Func<Actor,bool> execute;
     // mayor prioridad = se chequea primero
-    public int Priority;
+    private int priority;
 
-    public Behavior(Func<bool> execute, int priority)
+    public Behavior(Func<Actor,bool> execute, int priority)
     {
-        Execute = execute;
-        Priority = priority;
+        this.execute = execute;
+        this.priority = priority;
     }
+    public Func<Actor,bool> Execute => execute;
+    public int Priority => priority;
 }
 public class Actor
 {
@@ -373,19 +375,17 @@ public class Actor
             .ToList();
         this.moveSpeed = moveSpeed;  
     }
-
     public void Update()
     {
         foreach (Behavior behavior in behaviors)
         {
-            if (behavior.Execute())
+            if (behavior.Execute(this))
             {
                 break;
             }
         }
     }
-
-    public void MoveTowards(float dirX, float dirY, float dt)
+    public void MoveTowards(float dirX, float dirY)
     {
         // paso un punto (x,y) en el mapa
         // el actor intenta ir hacia allí con su velocidad
@@ -465,31 +465,15 @@ public class Program
         PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16,1024);
         entities.Add(playerBody); // placeholder
 
-        List<Behavior> noBehavior = new List<Behavior>();
-        Actor player = new Actor(playerBody,noBehavior,320);
-        List<Actor> actors = new List<Actor>();
-        actors.Add(player);
+        Behavior inputMovement = new Behavior(MoveActorWithInput,10);
+        List<Behavior> playerBehaviour = [inputMovement];
+        Actor player = new Actor(playerBody,playerBehaviour,320);
+        List<Actor> actors = [player];
 
         while (!Raylib.WindowShouldClose())
         {
             // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
             dt = Raylib.GetFrameTime();
-            //===================================================================================================================
-            // input player
-            //===================================================================================================================
-            float dirX = 0;
-            float dirY = 0;
-
-            if (Raylib.IsKeyDown(KeyboardKey.W)) dirY -= 1;
-            if (Raylib.IsKeyDown(KeyboardKey.S)) dirY += 1;
-            if (Raylib.IsKeyDown(KeyboardKey.A)) dirX -= 1;
-            if (Raylib.IsKeyDown(KeyboardKey.D)) dirX += 1;
-
-            if (!(Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.S) || Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.D)))
-            {
-                player.Body.SetVelocity(0,0);
-            }
-            player.MoveTowards(dirX, dirY, dt);
             //===================================================================================================================
             // actuan todos
             //===================================================================================================================
@@ -517,5 +501,25 @@ public class Program
             Raylib.EndDrawing();
         }
         Raylib.CloseWindow();
+    }
+    //=======================================================================================================================================
+    // behaviors
+    //=======================================================================================================================================
+    public static bool MoveActorWithInput(Actor player)
+    {
+        float dirX = 0;
+        float dirY = 0;
+        if (Raylib.IsKeyDown(KeyboardKey.W)) dirY -= 1;
+        if (Raylib.IsKeyDown(KeyboardKey.S)) dirY += 1;
+        if (Raylib.IsKeyDown(KeyboardKey.A)) dirX -= 1;
+        if (Raylib.IsKeyDown(KeyboardKey.D)) dirX += 1;
+
+        if (!(Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.S) || Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.D)))
+        {
+            player.Body.SetVelocity(0,0);
+            return false;
+        }
+        player.MoveTowards(dirX, dirY);
+        return true;
     }
 }
