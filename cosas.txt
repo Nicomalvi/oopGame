@@ -1,4 +1,2 @@
-- sacar resetVelocity de Move(). Move solo lee la velocidad y actua, manejar cuando se resetea
-o varia depende de otras cosas (ya sea una piedra con vx constante cuando la lanzo o un player
-con vx constante si se mantiene la tecla D)
-- physEnt necesita maxVel?
+- no usar tanto set a la hora de mover una physEnt, por ejemplo si me muevo a la derecha
+gracias a que uso SetVelocity estoy cambiando la velocidad en el eje y cuando no deberia.

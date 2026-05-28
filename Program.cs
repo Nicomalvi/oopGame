@@ -34,9 +34,9 @@ public class MapGrid
         factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
         {
             // pared, hitbox tamaño cellSize x cellSize
-            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize, m.CellSize),
+            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize, m.CellSize, false),
             // nico, hitbox tamaño cellSize/2 x cellSize/2
-            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize/2, m.CellSize/2),
+            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize/2, m.CellSize/2, true),
         };
     }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
@@ -168,14 +168,17 @@ public class PhysicalEntity
     private float maxX, maxY;
     private float vx, vy;
     private Hitbox hitbox;
+    private bool affectedByGravity;
+    private const float GRAVITY = 800f;
     private MapGrid map;
-    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, float xOffset = 0, float yOffset = 0)
+    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, bool affectedByGravity, float xOffset = 0, float yOffset = 0)
     {
         this.map = map;
         this.maxX = map.Width - 1;
         this.maxY = map.Height - 1;
         this.x    = Math.Clamp(x, 0, maxX);
         this.y    = Math.Clamp(y, 0, maxY);
+        this.affectedByGravity = affectedByGravity;
         vx = 0; vy = 0;
         hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
@@ -184,11 +187,19 @@ public class PhysicalEntity
     {
         this.vx += vx;
         this.vy += vy;
+        ClampVelocity();
     }
     private void SetVelocity(float vx, float vy)
     {
         this.vx = vx;
         this.vy = vy;
+        ClampVelocity();
+    }
+    private void ClampVelocity()
+    {
+        // TODO PhysEnt tendra la misma maxima velocidad
+        vx = Math.Clamp(vx,-3200,3200);
+        vy = Math.Clamp(vy,-3200,3200); 
     }
     private void SetPosition(float nX, float nY){
         x = Math.Clamp(nX,0,maxX);
@@ -312,6 +323,7 @@ public class PhysicalEntity
     }
     public virtual void Update(float dt)
     {
+        if(affectedByGravity){AddVelocity(0,GRAVITY);}
         if(MoveVector.VX != 0 || MoveVector.VY != 0)
         {
             Move(dt);
@@ -378,7 +390,7 @@ public class PlayerInputBehavior : Behavior
         if (Raylib.IsKeyDown(KeyboardKey.S)) dirY += 1;
         if (Raylib.IsKeyDown(KeyboardKey.A)) dirX -= 1;
         if (Raylib.IsKeyDown(KeyboardKey.D)) dirX += 1;
-        actor.Body.SetSpeedTowards(dirX, dirY, actor.MoveSpeed);
+        actor.GoTowardsDirection(dirX, dirY);
         return true;
     }
 }
@@ -389,7 +401,7 @@ public class WallBounceBehavior : Behavior
     {
         if (actor.MoveVector.VX == 0)
             dir = -dir;
-        actor.Body.SetSpeedTowards(dir, 0, actor.MoveSpeed);
+        actor.GoTowardsDirection(dir, 0);
         return true;
     }
 }
@@ -409,6 +421,10 @@ public class Actor
     public void Update()
     {
         behavior.Execute(this);
+    }
+    public void GoTowardsDirection(float x, float y)
+    {
+        Body.SetSpeedTowards(x,y,moveSpeed);
     }
     public PhysicalEntity Body => body;
     public float MoveSpeed => moveSpeed;
@@ -471,12 +487,12 @@ public class Program
         Raylib.SetTargetFPS(60);
         float dt;
 
-        PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16);
+        PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16,true);
         physEntities.Add(playerBody); // placeholder
         Actor playerActor = new Actor(playerBody, 1024, new PlayerInputBehavior());
         List<Actor> actors = [playerActor];
 
-        PhysicalEntity boxBody = new PhysicalEntity(32,64,map,32,32);
+        PhysicalEntity boxBody = new PhysicalEntity(32,64,map,32,32,false);
         physEntities.Add(boxBody);
         Actor boxActor = new Actor(boxBody, 320, new WallBounceBehavior());
         actors.Add(boxActor);
