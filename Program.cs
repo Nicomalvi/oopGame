@@ -34,14 +34,28 @@ public class MapGrid
         factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
         {
             // pared, hitbox tamaño cellSize x cellSize
-            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize, m.CellSize, 64),
+            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize, m.CellSize),
             // nico, hitbox tamaño cellSize/2 x cellSize/2
-            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize/2, m.CellSize/2, 320),
+            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize/2, m.CellSize/2),
         };
     }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
     {
         return grid[x][y];
+    }
+    public List<PhysicalEntity> OccupyingPixel(float x, float y)
+    {
+        List<PhysicalEntity> cell = GetCellByIndex((int)x/cellSize, (int)y/cellSize);
+        List<PhysicalEntity> res = new List<PhysicalEntity>();
+        foreach (PhysicalEntity physEnt in cell)
+        {
+            if(physEnt.HitboxLeft <= x && physEnt.HitboxRight >= x &&
+                physEnt.HitboxTop <= y && physEnt.HitboxBottom >= y)
+            {
+                res.Add(physEnt);
+            }
+        }
+        return res;
     }
     public void AddEntity(PhysicalEntity ent)
     {
@@ -153,45 +167,30 @@ public class PhysicalEntity
     private float x, y;
     private float maxX, maxY;
     private float vx, vy;
-    private float maxSpeed;
     private Hitbox hitbox;
     private MapGrid map;
-    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, float maxSpeed, float xOffset = 0, float yOffset = 0)
+    public PhysicalEntity(float x, float y, MapGrid map, float width, float height, float xOffset = 0, float yOffset = 0)
     {
         this.map = map;
         this.maxX = map.Width - 1;
         this.maxY = map.Height - 1;
         this.x    = Math.Clamp(x, 0, maxX);
         this.y    = Math.Clamp(y, 0, maxY);
-        this.maxSpeed = maxSpeed;
         vx = 0; vy = 0;
         hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
     }
-    public void AddVelocity(float vx, float vy)
+    private void AddVelocity(float vx, float vy)
     {
         this.vx += vx;
         this.vy += vy;
-        ClampVelocity();
     }
-    public void SetVelocity(float vx, float vy)
+    private void SetVelocity(float vx, float vy)
     {
         this.vx = vx;
         this.vy = vy;
-        ClampVelocity();
     }
-    private void ClampVelocity()
-    {
-        // si estoy yendo en diagonal voy "mas rapido"
-        // calculo la velocidad y si me pase la reduzco sin cambiar la dir.
-        float speed = MathF.Sqrt(vx * vx + vy * vy);
-        if(speed > maxSpeed)
-        {
-            vx = vx / speed * maxSpeed;
-            vy = vy / speed * maxSpeed;
-        }
-    }
-    public void SetPosition(float nX, float nY){
+    private void SetPosition(float nX, float nY){
         x = Math.Clamp(nX,0,maxX);
         y = Math.Clamp(nY,0,maxY);
     }
@@ -203,7 +202,7 @@ public class PhysicalEntity
         return((int)(x + xOffset)/map.CellSize,(int)(x + xOffset + width)/map.CellSize,
                (int)(y + yOffset)/map.CellSize,(int)(y + yOffset + height)/map.CellSize);
     }
-   public List<PhysicalEntity> HitboxOverlapList()
+    public List<PhysicalEntity> HitboxOverlapList()
     {
         // me fijo cuales hitbox ocupan alguna celda en la que estoy
         // luego, me fijo si hay colision
@@ -227,7 +226,27 @@ public class PhysicalEntity
         return x + xOffset + width <= maxX && x + xOffset + width >= 0 &&
                y + yOffset + height <= maxY && y + yOffset + height >= 0;
     }
-    public void Move(float dt)
+    public void SetSpeedTowards(float dirX, float dirY, float moveSpeed)
+    {
+        // paso un punto (x,y) en el mapa
+        // el actor intenta ir hacia allí con su velocidad
+        if(dirX == 0 && dirY == 0)
+        {
+            SetVelocity(0, 0);
+            return;
+        }
+        float length = MathF.Sqrt(dirX * dirX + dirY * dirY);
+        // hago pitagoras para ver cuanto mide el vector
+        // divido el vector por lo que mide asi lo normalizo
+        // nuevo vector <= (1,1)
+        // multiplico mi velocidad por eso
+        // (sino ir por ejemplo de una a (8,5)*velocidad iria rapidisimo)
+        dirX /= length;
+        dirY /= length;
+
+        SetVelocity(dirX * moveSpeed, dirY * moveSpeed);
+    }
+    private void Move(float dt)
     {
         // me voy moviendo de a 1 paso
         // si detecto una colision, chequeo si me hace frenar, chequeo efectos de la colision
@@ -273,7 +292,7 @@ public class PhysicalEntity
         SetPosition(x,y);
         map.AddEntity(this);
     }
-    public virtual bool CollisionStopsMovement(PhysicalEntity ent)
+    private bool CollisionStopsMovement(PhysicalEntity ent)
     {
         return this!=ent; // toda PhysEnt por defecto frena al chocar con cualquier entidad
     }                     // distintos hijos tendran overRide de este metodo
@@ -344,66 +363,55 @@ public class PhysicalEntity
 
     public MapGrid Map => map;
 }
-public class Behavior
+public abstract class Behavior
 {
-    // devuelve true si la behavior actuó
-    // devuelve false si no hizo nada
-    private Func<Actor,bool> execute;
-    // mayor prioridad = se chequea primero
-    private int priority;
+    public abstract bool Execute(Actor actor);
+}
 
-    public Behavior(Func<Actor,bool> execute, int priority)
+public class PlayerInputBehavior : Behavior
+{
+    public override bool Execute(Actor actor)
     {
-        this.execute = execute;
-        this.priority = priority;
+        float dirX = 0;
+        float dirY = 0;
+        if (Raylib.IsKeyDown(KeyboardKey.W)) dirY -= 1;
+        if (Raylib.IsKeyDown(KeyboardKey.S)) dirY += 1;
+        if (Raylib.IsKeyDown(KeyboardKey.A)) dirX -= 1;
+        if (Raylib.IsKeyDown(KeyboardKey.D)) dirX += 1;
+        actor.Body.SetSpeedTowards(dirX, dirY, actor.MoveSpeed);
+        return true;
     }
-    public Func<Actor,bool> Execute => execute;
-    public int Priority => priority;
+}
+public class WallBounceBehavior : Behavior
+{
+    private float dir = 1f;
+    public override bool Execute(Actor actor)
+    {
+        if (actor.MoveVector.VX == 0)
+            dir = -dir;
+        actor.Body.SetSpeedTowards(dir, 0, actor.MoveSpeed);
+        return true;
+    }
 }
 public class Actor
 {
     // controller (decido que hacer con ia x o ia y, o con input de player...)
     private PhysicalEntity body;
-    private List<Behavior> behaviors;
+    private Behavior behavior;
     private float moveSpeed; 
 
-    public Actor(PhysicalEntity body, List<Behavior> behaviors, float moveSpeed)
+    public Actor(PhysicalEntity body, float moveSpeed, Behavior behavior)
     {
         this.body = body;
-        this.behaviors = behaviors
-            .OrderByDescending(b => b.Priority)
-            .ToList();
+        this.behavior = behavior;
         this.moveSpeed = moveSpeed;  
     }
     public void Update()
     {
-        foreach (Behavior behavior in behaviors)
-        {
-            if (behavior.Execute(this))
-            {
-                break;
-            }
-        }
+        behavior.Execute(this);
     }
-    public void MoveTowards(float dirX, float dirY)
-    {
-        // paso un punto (x,y) en el mapa
-        // el actor intenta ir hacia allí con su velocidad
-        if(dirX == 0 && dirY == 0)
-            return;
-        float length = MathF.Sqrt(dirX * dirX + dirY * dirY);
-        // hago pitagoras para ver cuanto mide el vector
-        // divido el vector por lo que mide asi lo normalizo
-        // nuevo vector <= (1,1)
-        // multiplico mi velocidad por eso
-        // (sino ir por ejemplo de una a (8,5)*velocidad iria rapidisimo)
-        dirX /= length;
-        dirY /= length;
-
-        body.SetVelocity(dirX * moveSpeed, dirY * moveSpeed);
-    }
-
     public PhysicalEntity Body => body;
+    public float MoveSpeed => moveSpeed;
     // mismos getters que body para un trabajo mas limpio
     // hace falta? puedo traer el body y ver eso...
     // actor = api publica
@@ -458,18 +466,20 @@ public class Program
         "11111";
         string[][]chunks = [[topLeftCorner,topRightCorner],
                             [bottomLeftCorner,bottomRightCorner]];
-        List<PhysicalEntity> entities = map.CreateChunks(chunks,0,0,5,5);
+        List<PhysicalEntity> physEntities = map.CreateChunks(chunks,0,0,5,5);
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
         float dt;
-        PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16,1024);
-        entities.Add(playerBody); // placeholder
 
-        Behavior inputMovement = new Behavior(MoveActorWithInput,10);
-        List<Behavior> playerBehaviour = [inputMovement];
-        Actor player = new Actor(playerBody,playerBehaviour,320);
-        List<Actor> actors = [player];
+        PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16);
+        physEntities.Add(playerBody); // placeholder
+        Actor playerActor = new Actor(playerBody, 1024, new PlayerInputBehavior());
+        List<Actor> actors = [playerActor];
 
+        PhysicalEntity boxBody = new PhysicalEntity(32,64,map,32,32);
+        physEntities.Add(boxBody);
+        Actor boxActor = new Actor(boxBody, 320, new WallBounceBehavior());
+        actors.Add(boxActor);
         while (!Raylib.WindowShouldClose())
         {
             // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
@@ -481,7 +491,7 @@ public class Program
             {
                 actor.Update();
             }
-            foreach (PhysicalEntity entity in entities)
+            foreach (PhysicalEntity entity in physEntities)
             {
                 entity.Update(dt);
             }
@@ -496,30 +506,10 @@ public class Program
             for (int row = 0; row <= height; row += CELL_SIZE)
                 Raylib.DrawLine(0, row, width, row, new Color(40, 40, 40, 255));
             // hitboxes PLACEHOLDER
-            foreach (var ent in entities)
+            foreach (var ent in physEntities)
                 ent.DrawDebug();
             Raylib.EndDrawing();
         }
         Raylib.CloseWindow();
-    }
-    //=======================================================================================================================================
-    // behaviors
-    //=======================================================================================================================================
-    public static bool MoveActorWithInput(Actor player)
-    {
-        float dirX = 0;
-        float dirY = 0;
-        if (Raylib.IsKeyDown(KeyboardKey.W)) dirY -= 1;
-        if (Raylib.IsKeyDown(KeyboardKey.S)) dirY += 1;
-        if (Raylib.IsKeyDown(KeyboardKey.A)) dirX -= 1;
-        if (Raylib.IsKeyDown(KeyboardKey.D)) dirX += 1;
-
-        if (!(Raylib.IsKeyDown(KeyboardKey.W) || Raylib.IsKeyDown(KeyboardKey.S) || Raylib.IsKeyDown(KeyboardKey.A) || Raylib.IsKeyDown(KeyboardKey.D)))
-        {
-            player.Body.SetVelocity(0,0);
-            return false;
-        }
-        player.MoveTowards(dirX, dirY);
-        return true;
     }
 }
