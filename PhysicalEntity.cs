@@ -1,3 +1,4 @@
+using System.Numerics;
 using Raylib_cs;
 public class PhysicalEntity
 // PhysEnt = entidad fisica con una hitbox que se puede mover y chocar con otras entidades en el mismo mapa
@@ -21,13 +22,16 @@ public class PhysicalEntity
         hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
     }
-    private void AddVelocity(float vx, float vy)
+    // ====================================================================================================================
+    // funciones basicas: mover la entidad
+    // ====================================================================================================================
+    public void AddVelocity(float vx, float vy)
     {
         this.vx += vx;
         this.vy += vy;
         ClampVelocity();
     }
-    private void SetVelocity(float vx, float vy)
+    public void SetVelocity(float vx, float vy)
     {
         this.vx = vx;
         this.vy = vy;
@@ -43,6 +47,9 @@ public class PhysicalEntity
         x = Math.Clamp(nX,0,maxX);
         y = Math.Clamp(nY,0,maxY);
     }
+    // ====================================================================================================================
+    // informacion de la hitbox en el mapa
+    // ====================================================================================================================
     public (int,int,int,int) GetHitboxMapCells()
     {
         // puede devolver out of bounds !!! 
@@ -75,34 +82,20 @@ public class PhysicalEntity
         return x + xOffset + width <= maxX && x + xOffset + width >= 0 &&
                y + yOffset + height <= maxY && y + yOffset + height >= 0;
     }
-    public void SetSpeedTowards(float dirX, float dirY, float moveSpeed)
-    {
-        // paso un punto (x,y) en el mapa
-        // el actor intenta ir hacia allí con su velocidad
-        if(dirX == 0 && dirY == 0)
-        {
-            SetVelocity(0, 0);
-            return;
-        }
-        float length = MathF.Sqrt(dirX * dirX + dirY * dirY);
-        // hago pitagoras para ver cuanto mide el vector
-        // divido el vector por lo que mide asi lo normalizo
-        // nuevo vector <= (1,1)
-        // multiplico mi velocidad por eso
-        // (sino ir por ejemplo de una a (8,5)*velocidad iria rapidisimo)
-        dirX /= length;
-        dirY /= length;
-
-        SetVelocity(dirX * moveSpeed, dirY * moveSpeed);
-    }
+    // ====================================================================================================================
+    // movimiento de una entidad y colisiones
+    // ====================================================================================================================
     private void Move(float dt)
     {
         // me voy moviendo de a 1 paso
         // si detecto una colision, chequeo si me hace frenar, chequeo efectos de la colision
         (float vx, float vy) =  MoveVector;
+
         vx *= dt; // multiplico por frameTime
         vy *= dt;
-        if(MoveVector == (0,0)){return;}
+
+        if((vx,vy) == (0,0)){return;} // corto acá si la suma de velocidad personal y externa es 0
+
         map.RemoveEntity(this);
 
         (float x, float y) =    PosVector;
@@ -167,6 +160,9 @@ public class PhysicalEntity
             Move(dt);
         }
     }
+    // ====================================================================================================================
+    // debug
+    // ====================================================================================================================
     public void PrintVertices()
     {
         (float xOffset, float yOffset) = HitboxOffsets;
@@ -201,6 +197,9 @@ public class PhysicalEntity
         Raylib.DrawRectangleLines(rx, ry, rw, rh, Color.White);
         Raylib.DrawText($"({rx},{ry})", rx + 2, ry + 2, 8, Color.White);
     }
+    // ====================================================================================================================
+    // getters
+    // ====================================================================================================================
     public (float X, float Y)   PosVector  => (x, y);
     public (float VX, float VY) MoveVector => (vx, vy);
 
@@ -211,5 +210,6 @@ public class PhysicalEntity
     public float HitboxLeft   => x + HitboxOffsets.offsetX;
     public float HitboxRight  => x + HitboxOffsets.offsetX + HitboxDimensions.width;
 
+    public bool HasGravity => affectedByGravity;
     public MapGrid Map => map;
 }

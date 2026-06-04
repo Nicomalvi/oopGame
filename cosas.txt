@@ -1,5 +1,3 @@
-- no usar tanto set a la hora de mover una physEnt, por ejemplo si me muevo a la derecha
-gracias a que uso SetVelocity estoy cambiando la velocidad en el eje y cuando no deberia.
-- armar setXVelocity, Jump usa keyPressed y no keyDown
+- behaviors tienen que pasar a ser behavior tree o state machine
 - facilitar mas level editor -> [1*5@] = [11111@]
 - plataformas deben poder llevar cosas encima [DIFICIL]

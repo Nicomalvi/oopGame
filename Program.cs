@@ -25,14 +25,15 @@ public class Program
         // creo al player y una box 
         PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16,true);
         physEntities.Add(playerBody); // placeholder
-        Actor playerActor = new Actor(playerBody, 1024, new PlayerInputBehavior());
-        List<Actor> actors = [playerActor];
 
         PhysicalEntity boxBody = new PhysicalEntity(64,64,map,32,32,false);
         physEntities.Add(boxBody);
-        Actor boxActor = new Actor(boxBody, 320, new WallBounceBehavior());
-        actors.Add(boxActor);
 
+        Behavior playerBehavior = new PlayerInputBehavior();
+        Actor playerActor = new Actor(playerBody, 640, playerBehavior);
+
+        List<Actor> actors = new List<Actor>();
+        actors.Add(playerActor);
         while (!Raylib.WindowShouldClose())
         {
             // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
