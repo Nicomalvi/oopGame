@@ -18,16 +18,24 @@ public class Program
         physEntities.AddRange(map.CreateChunks(chunks,0,0,20,1));
         physEntities.AddRange(map.CreateChunks(chunks,0,29,20,1));
 
+        string[][] level1 = 
+        [[
+        "00000" +
+        "11011" +
+        "00100"
+        ]];
+        physEntities.AddRange(map.CreateChunks(level1, 2, 3, 3, 5));
+
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
         float dt;
 
         // creo al player y una box 
-        PhysicalEntity playerBody = new PhysicalEntity(32,31,map,16,16,true);
+        PhysicalEntity playerBody = new PhysicalEntity(64,64,map,16,16,true);
         physEntities.Add(playerBody); // placeholder
 
-        PhysicalEntity boxBody = new PhysicalEntity(64,64,map,32,32,false);
-        physEntities.Add(boxBody);
+        //PhysicalEntity boxBody = new PhysicalEntity(64,64,map,32,32,false);
+        //physEntities.Add(boxBody);
 
         Behavior playerBehavior = new PlayerInputBehavior();
         Actor playerActor = new Actor(playerBody, 640, playerBehavior);
@@ -41,9 +49,14 @@ public class Program
             //===================================================================================================================
             // actuan todos
             //===================================================================================================================
+
+            // orden importante: primero actuan ACTORS
+            // entonces x ejemplo player decide saltar, velocidad en Y < 0
+            // LUEGO actuan fisicas: si velocidad en Y >= 0, aplicar gravedad constante
+            
             foreach (Actor actor in actors)
             {
-                actor.Update();
+                actor.Update(dt);
             }
             foreach (PhysicalEntity entity in physEntities)
             {
@@ -63,6 +76,7 @@ public class Program
             foreach (var ent in physEntities)
                 ent.DrawDebug();
             Raylib.EndDrawing();
+            Console.WriteLine(actors[0].MoveVector);
         }
         Raylib.CloseWindow();
     }

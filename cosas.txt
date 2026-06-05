@@ -1,3 +1,5 @@
-- behaviors tienen que pasar a ser behavior tree o state machine
+- verificar funcionamiento gravedad
+
+- habilitar doubleJump con un booleano en las behavior
 - facilitar mas level editor -> [1*5@] = [11111@]
-- plataformas deben poder llevar cosas encima [DIFICIL]
+- plataformas deben poder llevar cosas encima [DIFICIL] 

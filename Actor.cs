@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 public enum State{idle,walk,jump,fall,attack};
 public class Actor
 // Actor = interfaz: le paso info a mi behavior y esta me dice como actuar (ya sea modificar mis fisicas, estado...)
@@ -18,9 +20,9 @@ public class Actor
         this.moveSpeed = moveSpeed;  
         this.state = State.idle;
     }
-    public void Update()
+    public void Update(float dt)
     {
-        behavior.Execute(this);
+        behavior.Execute(this, dt);
     }
     public void SetState(State newState)
     {
@@ -34,26 +36,19 @@ public class Actor
     // funciones comunes entre varios actores (moverse y saltar no cambia comportamiento)
     //================================================================================================
     public void AddVelocity(float vx, float vy)
+    // marco mi velocidad personal
     {
-        body.AddVelocity(vx,vy);
+        Body.AddVelocity(vx,vy);
     }
-    public void MoveTowardsVector(float dirX, float dirY)
+    public void SetVelocity(float vx, float vy)
+    {
+        Body.SetVelocity(vx,vy);
+    }
+    public void VectorBodyMovement(float dirX, float dirY)
     // paso un punto (x,y) en el mapa
     // physEnt SUMA  la velocidad personal en esa direccion
     {
         (float vx, float vy) = MoveVector;
-        if(dirX == 0 && dirY == 0)
-        // moverme hacia ninguna direccion se interpreta como
-        // dejar de moverme en X
-        // SI NO TENGO GRAVEDAD dejar de moverme en Y
-        {
-            vx *= 0.7f;
-            if(!body.HasGravity){vy = 0;} 
-
-            Body.SetVelocity(vx,vy);
-            return;
-        }
-
         // si me llega una dirección opuesta a la que iba hago un giro rapido
         // en vez de seguir yendo pero un poco mas lento hacia donde ya no quiero
         if (dirX != 0 && Math.Sign(dirX) != Math.Sign(vx))
@@ -65,9 +60,11 @@ public class Actor
         dirX /= length;
         dirY /= length;
 
-        // PLACEHOLDER: NECESITO FORMA DE LIMITAR CUANTA VELOCIDAD PUEDO GANAR POR MI CUENTA
-        vx += dirX*64;
-        vy += dirY*64;
+        // actor no comienza en moveSpeed de 1, va aumentando de a poco para simular aceleracion
+        vx = Math.Clamp(vx + dirX*64, -moveSpeed, moveSpeed);
+
+        // PLACEHOLDER: por ahora en vy es igual
+        vy = Math.Clamp(vy + dirY*64, -moveSpeed, moveSpeed);
 
         Body.SetVelocity(vx,vy);
     }

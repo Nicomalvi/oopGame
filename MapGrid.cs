@@ -111,6 +111,7 @@ public class MapGrid
                         float py = ((rowOffset + row) * chunkRows + chunkRow) * cellSize;
                         if (factories.ContainsKey(c))
                         {
+                            Console.WriteLine($"char='{c}' row={chunkRow} col={chunkCol} px={px} py={py}");
                             created.Add(factories[c](px, py, this));
                         }
                     }

@@ -8,7 +8,7 @@ public class PhysicalEntity
     private float vx, vy;
     private Hitbox hitbox;
     private bool affectedByGravity;
-    private const float GRAVITY = 640;
+    private float GRAVITY = 0;
     private MapGrid map;
     public PhysicalEntity(float x, float y, MapGrid map, float width, float height, bool affectedByGravity, float xOffset = 0, float yOffset = 0)
     {
@@ -21,6 +21,7 @@ public class PhysicalEntity
         vx = 0; vy = 0;
         hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
+        GRAVITY = map.CellSize*16; // quiero caer 4 bloques por segundo (PLACEHOLDER)
     }
     // ====================================================================================================================
     // funciones basicas: mover la entidad
@@ -125,6 +126,7 @@ public class PhysicalEntity
             entities = HitboxOverlapList();
             if(!PositionInBounds() || entities.Exists(CollisionStopsMovement))
             {
+                Console.WriteLine("COLLISION");
                 y -= stepY;
                 SetPosition(x,y);
                 stepY = 0;
@@ -154,7 +156,11 @@ public class PhysicalEntity
     }
     public void Update(float dt)
     {
-        if(affectedByGravity){AddVelocity(0,GRAVITY);}
+        if (affectedByGravity && !StandingOnPlatform())
+        {
+            float newVy = Math.Min(this.vy + GRAVITY * dt, GRAVITY);
+            SetVelocity(this.vx, newVy);
+        }
         if(MoveVector.VX != 0 || MoveVector.VY != 0)
         {
             Move(dt);
