@@ -8,7 +8,7 @@ public class PhysicalEntity
     private float vx, vy;
     private Hitbox hitbox;
     private bool affectedByGravity;
-    private float GRAVITY = 0;
+    private float GRAVITY;
     private MapGrid map;
     public PhysicalEntity(float x, float y, MapGrid map, float width, float height, bool affectedByGravity, float xOffset = 0, float yOffset = 0)
     {
@@ -21,7 +21,7 @@ public class PhysicalEntity
         vx = 0; vy = 0;
         hitbox = new Hitbox(width, height, xOffset, yOffset);
         this.map.AddEntity(this);
-        GRAVITY = map.CellSize*16; // quiero caer 4 bloques por segundo (PLACEHOLDER)
+        GRAVITY = map.CellSize*16; // quiero caer X bloques por segundo (PLACEHOLDER)
     }
     // ====================================================================================================================
     // funciones basicas: mover la entidad

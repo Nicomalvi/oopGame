@@ -33,7 +33,7 @@ public class Actor
         
     }
     //================================================================================================
-    // funciones comunes entre varios actores (moverse y saltar no cambia comportamiento)
+    // funciones comunes entre varios actores
     //================================================================================================
     public void AddVelocity(float vx, float vy)
     // marco mi velocidad personal
@@ -42,30 +42,6 @@ public class Actor
     }
     public void SetVelocity(float vx, float vy)
     {
-        Body.SetVelocity(vx,vy);
-    }
-    public void VectorBodyMovement(float dirX, float dirY)
-    // paso un punto (x,y) en el mapa
-    // physEnt SUMA  la velocidad personal en esa direccion
-    {
-        (float vx, float vy) = MoveVector;
-        // si me llega una dirección opuesta a la que iba hago un giro rapido
-        // en vez de seguir yendo pero un poco mas lento hacia donde ya no quiero
-        if (dirX != 0 && Math.Sign(dirX) != Math.Sign(vx))
-            vx = 0;
-        if (dirY != 0 && Math.Sign(dirY) != Math.Sign(vy))
-            vy = 0;
-
-        float length = MathF.Sqrt(dirX * dirX + dirY * dirY);
-        dirX /= length;
-        dirY /= length;
-
-        // actor no comienza en moveSpeed de 1, va aumentando de a poco para simular aceleracion
-        vx = Math.Clamp(vx + dirX*64, -moveSpeed, moveSpeed);
-
-        // PLACEHOLDER: por ahora en vy es igual
-        vy = Math.Clamp(vy + dirY*64, -moveSpeed, moveSpeed);
-
         Body.SetVelocity(vx,vy);
     }
     public PhysicalEntity Body => body;

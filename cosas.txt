@@ -1,4 +1,6 @@
-- verificar funcionamiento gravedad
+- velocidades deberian funcionar en relacion a cellSize, no mas floats !!!
+
+- verificar funcionamiento gravedad y relacion con deltaTime
 
 - habilitar doubleJump con un booleano en las behavior
 - facilitar mas level editor -> [1*5@] = [11111@]
