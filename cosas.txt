@@ -4,4 +4,5 @@
 
 - habilitar doubleJump con un booleano en las behavior
 - facilitar mas level editor -> [1*5@] = [11111@]
+    cambiar TODO el level editor... que sea "creame este chunk, esq. inferior izq en x,y"
 - plataformas deben poder llevar cosas encima [DIFICIL] 

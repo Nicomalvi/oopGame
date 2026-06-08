@@ -24,11 +24,11 @@ public class PlayerInputBehavior : Behavior
     // mayor tiempo, menor cant. pixeles = salto mas lento, controlable
     // estas cosas también dependen de GRAVITY
     float jumpHeldTime = 0.2f;
-    float pixelsPerJumpTick = 32*8;
+    float pixelsPerJumpTick = 32*6;
 
     // si toco W y suelto -> initialJumpSpeed
     // luego tengo opcion de mantener para algunos pixeles mas
-    float initalJumpSpeed = 32*(16+8); // PLACEHOLDER: 32*16 = GRAVITY 
+    float initalJumpSpeed = 32*(5); // PLACEHOLDER: 32*16 = GRAVITY 
 
     public override bool Execute(Actor actor, float dt)
     {
@@ -64,7 +64,7 @@ public class PlayerInputBehavior : Behavior
                 // si no toque el piso...
                 // mantener W = salto mas alto
                 // o puedo moverme horizontalmente, pero más lento
-                HorizontalMoveCheck(actor,dt,actor.MoveSpeed * 0.60f); //placeholder: 60% velocidad normal
+                HorizontalMoveCheck(actor,dt,actor.MoveSpeed * 1f);
                 jumpTime += dt;
                 if (Raylib.IsKeyDown(KeyboardKey.W) && jumpTime < jumpHeldTime && !stoppedJumpHeight)
                 {
@@ -102,7 +102,7 @@ public class PlayerInputBehavior : Behavior
         // si no quise moverme en X, genero friccion 
         {
             (float vx, float vy) = actor.MoveVector;
-            if (Math.Abs(vx) < 32)
+            if (Math.Abs(vx) < 64)
             {
                 actor.SetVelocity(0,vy);
             } else

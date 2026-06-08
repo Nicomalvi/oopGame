@@ -88,33 +88,24 @@ public class MapGrid
         (float x, float y) = player.PosVector;
         Console.WriteLine("(" + x + ", " + y + ")");
     }
-    public List<PhysicalEntity> CreateChunks(string[][] chunks, int rowOffset, int colOffset, int chunkRows, int chunkCols)
+    public List<PhysicalEntity> CreateChunks(string map, int cols, float originX, float originY)
     {
-        int rows = chunks.Count();
-        int cols = chunks[0].Count();
         List<PhysicalEntity> created = new List<PhysicalEntity>();
-        for(int row = 0; row < rows; row++)
-        {
-            for(int col = 0; col<cols; col++)
-            {
-                string currentChunk = chunks[row][col];
-                for(int chunkRow = 0; chunkRow<chunkRows; chunkRow++)
-                {
-                    for(int chunkCol = 0; chunkCol<chunkCols; chunkCol++)
-                    {
-                        char c = currentChunk[chunkRow * chunkCols + chunkCol];
-                        // raro porque uso 1 string en vez de matriz de chars
-                        // basicamente dice: para llegar a row actual salteo todos los caracteres
-                        // hasta fila actual * cantidad columnas
+        int rows = map.Length / cols;
 
-                        float px = ((colOffset + col) * chunkCols + chunkCol) * cellSize;
-                        float py = ((rowOffset + row) * chunkRows + chunkRow) * cellSize;
-                        if (factories.ContainsKey(c))
-                        {
-                            Console.WriteLine($"char='{c}' row={chunkRow} col={chunkCol} px={px} py={py}");
-                            created.Add(factories[c](px, py, this));
-                        }
-                    }
+        for (int row = 0; row < rows; row++)
+        {
+            for (int col = 0; col < cols; col++)
+            {
+                char c = map[row * cols + col];
+
+                float px = originX + col * cellSize;
+                float py = originY + row * cellSize;
+
+                if (factories.ContainsKey(c))
+                {
+                    Console.WriteLine($"char='{c}' row={row} col={col} px={px} py={py}");
+                    created.Add(factories[c](px, py, this));
                 }
             }
         }

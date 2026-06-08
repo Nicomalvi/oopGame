@@ -11,20 +11,19 @@ public class Program
 
         // creo las paredes del nivel inicial
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
-        string wallRow = "111111111111111111111111111111";
-        string[][]chunks = [[wallRow]];
-        List<PhysicalEntity> physEntities = map.CreateChunks(chunks,0,0,1,30);
-        physEntities.AddRange(map.CreateChunks(chunks,map.Rows-2,0,1,30));
-        physEntities.AddRange(map.CreateChunks(chunks,0,0,20,1));
-        physEntities.AddRange(map.CreateChunks(chunks,0,29,20,1));
 
-        string[][] level1 = 
-        [[
-        "00000" +
-        "11011" +
-        "00100"
-        ]];
-        physEntities.AddRange(map.CreateChunks(level1, 2, 3, 3, 5));
+        string chunk =
+        "11111111111111111" +
+        "1               1" +
+        "1   @         111" +
+        "1           1  11" +
+        "1          111111" +
+        "1               1" +
+        "1       11    111" +
+        "1     1         1" +
+        "1  11111111111111" +
+        "11111111111111111";
+        var physEntities = map.CreateChunks(chunk, cols: 17, originX: 0, originY: 0);
 
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
