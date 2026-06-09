@@ -75,7 +75,9 @@ public class Program
             foreach (var ent in physEntities)
                 ent.DrawDebug();
             Raylib.EndDrawing();
-            Console.WriteLine(actors[0].MoveVector);
+
+            //debug
+            //Console.WriteLine(actors[0].MoveVector);
         }
         Raylib.CloseWindow();
     }
