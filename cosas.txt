@@ -1,3 +1,7 @@
+- cambiar dependencias y referencias: PhysEnt no deberia tener un mapGrid!!
+                                      PhysEnt deberia tener un actor?
+                                      usar MEDIADOR??
+                                      
 - velocidades deberian funcionar en relacion a cellSize, no mas floats !!!
 
 - verificar funcionamiento gravedad y relacion con deltaTime

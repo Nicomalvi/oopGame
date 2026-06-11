@@ -18,7 +18,7 @@ public class Program
         "1   @         111" +
         "1           1  11" +
         "1          111111" +
-        "1               1" +
+        "1                " +
         "1       11    111" +
         "1     1         1" +
         "1  11111111111111" +
@@ -29,12 +29,8 @@ public class Program
         Raylib.SetTargetFPS(60);
         float dt;
 
-        // creo al player y una box 
         PhysicalEntity playerBody = new PhysicalEntity(64,64,map,16,16,true);
         physEntities.Add(playerBody); // placeholder
-
-        //PhysicalEntity boxBody = new PhysicalEntity(64,64,map,32,32,false);
-        //physEntities.Add(boxBody);
 
         Behavior playerBehavior = new PlayerInputBehavior();
         Actor playerActor = new Actor(playerBody, 640, playerBehavior);
@@ -77,7 +73,7 @@ public class Program
             Raylib.EndDrawing();
 
             //debug
-            //Console.WriteLine(actors[0].MoveVector);
+            Console.WriteLine(actors[0].currentAction);
         }
         Raylib.CloseWindow();
     }
