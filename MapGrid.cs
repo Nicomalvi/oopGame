@@ -31,9 +31,9 @@ public class MapGrid
         factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
         {
             // pared, hitbox tamaño cellSize x cellSize
-            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize, m.CellSize, false),
+            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m.CellSize, m.CellSize, false),
             // nico, hitbox tamaño cellSize/2 x cellSize/2
-            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m, m.CellSize/2, m.CellSize/2, true),
+            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m.CellSize/2, m.CellSize/2, true),
         };
     }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
@@ -54,9 +54,8 @@ public class MapGrid
         }
         return res;
     }
-    public void AddEntity(PhysicalEntity ent)
+    public void AddEntity(PhysicalEntity ent,int x,int endX,int y,int endY)
     {
-        (int x,int endX,int y,int endY) = ent.GetHitboxMapCells();
         for(int i = x; i<=endX; i++)
         {
             for(int j = y; j<=endY; j++)
@@ -65,9 +64,8 @@ public class MapGrid
             }
         }
     }
-    public void RemoveEntity(PhysicalEntity ent)
+    public void RemoveEntity(PhysicalEntity ent,int x,int endX,int y,int endY)
     {
-        (int x,int endX,int y,int endY) = ent.GetHitboxMapCells();
         for(int i = x; i<=endX; i++)
         {
             for(int j = y; j<=endY; j++)
