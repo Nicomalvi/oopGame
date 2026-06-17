@@ -29,7 +29,7 @@ public class Program
         Raylib.SetTargetFPS(60);
         float dt;
 
-        PhysicalEntity playerBody = new PhysicalEntity(64,64,map,16,16,true);
+        PhysicalEntity playerBody = new PhysicalEntity(64,64,16,16,true);
         physEntities.Add(playerBody); // placeholder
 
         Behavior playerBehavior = new PlayerInputBehavior();
@@ -37,6 +37,13 @@ public class Program
 
         List<Actor> actors = new List<Actor>();
         actors.Add(playerActor);
+
+        PhysicsSystem physSys = new PhysicsSystem(map);
+        physSys.AddEntity(playerBody);
+        foreach (PhysicalEntity phys in physEntities)
+        {
+            physSys.AddEntity(phys);
+        }
         while (!Raylib.WindowShouldClose())
         {
             // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
@@ -53,10 +60,7 @@ public class Program
             {
                 actor.Update(dt);
             }
-            foreach (PhysicalEntity entity in physEntities)
-            {
-                entity.Update(dt);
-            }
+            physSys.UpdatePhysics(dt);
             //===================================================================================================================
             // renders
             //===================================================================================================================

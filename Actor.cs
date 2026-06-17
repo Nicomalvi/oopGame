@@ -112,7 +112,7 @@ public class Actor
     }
     private void UpdateAirActions(float dt)
     {
-        if(currentAction != Action.jump || currentAction != Action.fall)
+        if(currentAction != Action.jump && currentAction != Action.fall)
             return;
         jumpTimer += dt;
         if(OnPlatform)
@@ -157,10 +157,8 @@ public class Actor
     // mismos getters que body para un trabajo mas limpio
     // hace falta? puedo traer el body y ver eso...
     // actor = api publica
-    public bool OnPlatform => body.StandingOnPlatform();
+    public bool OnPlatform => body.OnPlatform;
 
     public (float X, float Y)   PosVector  => body.PosVector;
     public (float VX, float VY) MoveVector => body.MoveVector;
-
-    public MapGrid Map => body.Map;
 }

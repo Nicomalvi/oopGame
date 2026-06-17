@@ -7,6 +7,7 @@ public class PhysicalEntity
     private float vx, vy;
     private Hitbox hitbox;
     private bool affectedByGravity;
+    public bool onPlatform = false;
     public PhysicalEntity(float x, float y, float width, float height, bool affectedByGravity, float xOffset = 0, float yOffset = 0)
     {
         this.x    = x;
@@ -40,7 +41,6 @@ public class PhysicalEntity
         x = nX;
         y = nY;
     }
-
     public bool CollisionStopsMovement(PhysicalEntity ent)
     {
         return this!=ent; // toda PhysEnt por defecto frena al chocar con cualquier entidad
@@ -96,4 +96,5 @@ public class PhysicalEntity
     public float HitboxRight  => x + HitboxOffsets.offsetX + HitboxDimensions.width;
 
     public bool HasGravity => affectedByGravity;
+    public bool OnPlatform => onPlatform;
 }

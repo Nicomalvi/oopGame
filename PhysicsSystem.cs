@@ -16,6 +16,10 @@ public class PhysicsSystem
     {
         foreach (PhysicalEntity ent in entities)
         {
+            // actualizo el bool de plataformas
+            ent.onPlatform = EntityOnPlatform(ent);
+
+            // seteo gravedad de manera const.
             (float vx, float vy) = ent.MoveVector;
             if (ent.HasGravity && !EntityOnPlatform(ent))
             {
@@ -23,6 +27,8 @@ public class PhysicsSystem
                 ent.SetVelocity(vx, newVy);
                 vy = newVy;
             }
+
+            // evito mover innecesariamente
             if(vx != 0 || vy != 0)
             {
                 Move(ent,dt);
@@ -131,7 +137,7 @@ public class PhysicsSystem
                                 ent.HitboxTop    < physEnt.HitboxBottom &&
                                 ent.HitboxBottom > physEnt.HitboxTop).ToList();
     }
-    public bool EntityOnPlatform(PhysicalEntity ent)
+    private bool EntityOnPlatform(PhysicalEntity ent)
     {
         // chequeo: si mi pos. fuera 1 pixel abajo...
         // choco con alguien? y si choco, mi parte inferior esta arriba de su parte superior?
