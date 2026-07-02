@@ -15,53 +15,45 @@ public class PlayerInputBehavior : Behavior
     public override bool Execute(Actor actor, float dt)
     {
         HorizontalMoveCheck(actor, dt);
-        if (AttackCheck(actor, dt))
-            return true;
-        if (JumpCheck(actor))
-            return true;
+        AttackCheck(actor);
+        JumpCheck(actor);
         return true;
     }
+
     private void HorizontalMoveCheck(Actor actor, float dt)
     {
         int dirX = 0;
-        if (Raylib.IsKeyDown(KeyboardKey.A)) 
-        {   
-            dirX = -1;
-        }
-        if (Raylib.IsKeyDown(KeyboardKey.D))
-        {   
-            dirX = 1;
-        }
-        if(dirX != 0) 
+        if (Raylib.IsKeyDown(KeyboardKey.A)) dirX = -1;
+        if (Raylib.IsKeyDown(KeyboardKey.D)) dirX = 1;
+
+        if(dirX != 0)
         {
             float moveSpeed = actor.OnPlatform ? actor.MoveSpeed : actor.MoveSpeed*0.60f;
             actor.MoveHorizontal(dt,dirX,moveSpeed);
         }
-        if(dirX == 0)
+        else
         {
             actor.ApplyHorizontalFriction(dt);
         }
     }
-    private bool JumpCheck(Actor actor)
+
+    private void JumpCheck(Actor actor)
     {
         if (Raylib.IsKeyDown(KeyboardKey.W))
         {
             actor.Jump();
-            return true;
-        } else if (actor.Action == Action.jump)
-        {
-            actor.stoppedJumpHeight = true;
         }
-        return false;
+        else if (actor.Action == Action.jump)
+        {
+            actor.ReleaseJump();
+        }
     }
-    private bool AttackCheck(Actor actor, float dt)
+
+    private void AttackCheck(Actor actor)
     {
-        if(Raylib.IsKeyPressed(KeyboardKey.F) && actor.OnPlatform)
+        if(Raylib.IsKeyPressed(KeyboardKey.F))
         {
-            actor.ApplyHorizontalFriction(dt);
             actor.Attack();
-            return true;
         }
-        return false;
     }
 }

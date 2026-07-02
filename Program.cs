@@ -13,17 +13,20 @@ public class Program
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
 
         string chunk =
-        "11111111111111111" +
+        "111111111111111 1" +
         "1               1" +
         "1   @         111" +
         "1           1  11" +
         "1          111111" +
-        "1                " +
+        "                 " +
         "1       11    111" +
         "1     1         1" +
-        "1  11111111111111" +
-        "11111111111111111";
+        "1  111111111111 1" +
+        "111111111111111 1";
         var physEntities = map.CreateChunks(chunk, cols: 17, originX: 0, originY: 0);
+        physEntities.AddRange(map.CreateChunks(chunk, cols: 17, originX: 13*32, originY: 0));
+        physEntities.AddRange(map.CreateChunks(chunk, cols: 17, originX: 0, originY: 10*32));
+        physEntities.AddRange(map.CreateChunks(chunk, cols: 17, originX: 13*32, originY: 10*32));
 
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
@@ -33,7 +36,7 @@ public class Program
         physEntities.Add(playerBody); // placeholder
 
         Behavior playerBehavior = new PlayerInputBehavior();
-        Actor playerActor = new Actor(playerBody, 640, playerBehavior);
+        Actor playerActor = new Actor(playerBody, playerBehavior,[new MoveAbility(320), new JumpAbility()]);
 
         List<Actor> actors = new List<Actor>();
         actors.Add(playerActor);
