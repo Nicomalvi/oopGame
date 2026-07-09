@@ -1,10 +1,6 @@
-// ================================================================================
-// Ability = capacidad que un Actor puede tener o no. Cada una guarda SU propia data
-// ================================================================================
 public abstract class Ability
 {
-    // no todas las abilities necesitan tickear cada frame (ej. Attack instantaneo si),
-    // pero dejamos el hook virtual para las que si (Jump, Attack con timers, etc.)
+    // capacidad que un Actor puede tener o no. Cada una guarda SU propia data
     public virtual void Tick(Actor actor, float dt) {}
 }
 
@@ -31,7 +27,7 @@ public class MoveAbility : Ability
         // si el movimiento esta iniciando, simulo aceleracion (voy de a multiplos de 64)
         vx = Math.Clamp(vx + dir*64, -speed, speed);
         actor.SetVelocity(vx,vy);
-        if(actor.currentAction==Action.idle){actor.currentAction = Action.walk;}
+        if(actor.Action==Action.idle){actor.SwitchAction(Action.walk);}
     }
 
     public void ApplyHorizontalFriction(Actor actor, float dt)
@@ -49,7 +45,7 @@ public class MoveAbility : Ability
 
     private bool CanMove(Actor actor)
     {
-        return actor.currentAction != Action.attack;
+        return actor.Action != Action.attack;
     }
 
     public float MoveSpeed => moveSpeed;
@@ -75,12 +71,12 @@ public class JumpAbility : Ability
         {
             // caso: recien salto
             jumpsMade++;
-            actor.currentAction = Action.jump;
+            actor.SwitchAction(Action.jump);
             actor.AddVelocity(0,-initalJumpSpeed);
         } else
         {
             // caso: ya estoy en el aire
-            if(actor.currentAction == Action.jump && jumpTimer < maxJumpHeldTime && !stoppedJumpHeight)
+            if(actor.Action == Action.jump && jumpTimer < maxJumpHeldTime && !stoppedJumpHeight)
             {
                 float vx = actor.MoveVector.VX;
                 actor.SetVelocity(vx, -pixelsPerJumpTick);
@@ -103,7 +99,7 @@ public class JumpAbility : Ability
 
     private void UpdateAirActions(Actor actor, float dt)
     {
-        if(actor.currentAction != Action.jump && actor.currentAction != Action.fall)
+        if(actor.Action != Action.jump && actor.Action != Action.fall)
             return;
         jumpTimer += dt;
         if(actor.OnPlatform)
@@ -111,18 +107,18 @@ public class JumpAbility : Ability
             jumpTimer = 0;
             jumpsMade = 0;
             stoppedJumpHeight = false;
-            actor.currentAction = Action.idle;
+            actor.SwitchAction(Action.idle);
             return;
         }
         if(actor.MoveVector.VY >= 0)
         {
-            actor.currentAction = Action.fall;
+            actor.SwitchAction(Action.fall);
         }
     }
 
     private bool CanJump(Actor actor)
     {
-        return actor.currentAction != Action.attack;
+        return actor.Action != Action.attack;
     }
 }
 
@@ -134,7 +130,7 @@ public class AttackAbility : Ability
     public void Attack(Actor actor)
     {
         if(!CanAttack(actor)){return;}
-        actor.currentAction = Action.attack;
+        actor.SwitchAction(Action.attack);
     }
 
     public override void Tick(Actor actor, float dt)
@@ -144,18 +140,18 @@ public class AttackAbility : Ability
 
     private void UpdateAttackAction(Actor actor, float dt)
     {
-        if(actor.currentAction != Action.attack)
+        if(actor.Action != Action.attack)
             return;
         attackingTimer += dt;
         if(attackingTimer >= attackDuration)
         {
             attackingTimer = 0;
-            actor.currentAction = Action.idle;
+            actor.SwitchAction(Action.idle);
         }
     }
 
     private bool CanAttack(Actor actor)
     {
-        return actor.currentAction != Action.jump && actor.currentAction != Action.fall;
+        return actor.Action != Action.jump && actor.Action != Action.fall;
     }
 }

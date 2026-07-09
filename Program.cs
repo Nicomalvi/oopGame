@@ -1,4 +1,5 @@
-﻿using Raylib_cs;
+﻿using System.Numerics;
+using Raylib_cs;
 public class Program
 {
     const int CELL_SIZE    = 32;
@@ -47,6 +48,35 @@ public class Program
         {
             physSys.AddEntity(phys);
         }
+
+        // PLACEHOLDER
+        // SPRITES DEL PLAYER
+        Image playerSpriteSheet = Raylib.LoadImage("4anims4framesTest.png");
+        Texture2D playerTexture = Raylib.LoadTextureFromImage(playerSpriteSheet);
+
+        Vector2 playerSpritePos = new Vector2(playerActor.PosVector.X, playerActor.PosVector.Y);
+        Vector2 playerSpriteSize = new Vector2(playerBody.HitboxDimensions.width, playerBody.HitboxDimensions.height);
+        Rectangle initialPlayerSource = new Rectangle(0, 0, 16, 16);
+
+        EntitySprite playerSprite = new EntitySprite(playerTexture, playerSpritePos, initialPlayerSource);
+
+        // ANIMACIONES DEL PLAYER
+        List<float> placeholderTimes = [0.16f,0.16f,0.16f,0.16f];
+        AnimationTimer idleTimer = new AnimationTimer(placeholderTimes);
+        AnimationTimer walkTimer = new AnimationTimer(placeholderTimes);
+        AnimationTimer jumpTimer = new AnimationTimer(placeholderTimes);
+        AnimationTimer fallTimer = new AnimationTimer(placeholderTimes);
+
+        AnimationPlayer playerAnimationPlayer = new AnimationPlayer(
+            [idleTimer,walkTimer,jumpTimer,fallTimer],
+            playerSprite, playerBody.HitboxDimensions.width, playerBody.HitboxDimensions.height);
+
+        AnimationController playerAnimationController = new AnimationController(playerAnimationPlayer, playerActor);
+
+        // SPRITE SYSTEM    
+        SpritePositionSystem spritePositionSystem = new SpritePositionSystem();
+        spritePositionSystem.AddEntityAndSprite(playerBody,playerSprite);
+
         while (!Raylib.WindowShouldClose())
         {
             // AL PRINCIPIO DEL GAME LOOP TRAIGO EL FRAME TIME, TODOS TRABAJAN CON EL MISMO
@@ -64,23 +94,32 @@ public class Program
                 actor.Update(dt);
             }
             physSys.UpdatePhysics(dt);
+            
+            playerAnimationController.Tick(dt);
+
             //===================================================================================================================
-            // renders
+            // renders PLACEHOLDER
             //===================================================================================================================
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
-            // grid de referencia (opcional — comentar si molesta)
-            for (int col = 0; col <= width; col += CELL_SIZE)
-                Raylib.DrawLine(col, 0, col, height, new Color(40, 40, 40, 255));
-            for (int row = 0; row <= height; row += CELL_SIZE)
-                Raylib.DrawLine(0, row, width, row, new Color(40, 40, 40, 255));
+
+            // grid de referencia
+            // for (int col = 0; col <= width; col += CELL_SIZE)
+            //    Raylib.DrawLine(col, 0, col, height, new Color(40, 40, 40, 255));
+            // for (int row = 0; row <= height; row += CELL_SIZE)
+            //    Raylib.DrawLine(0, row, width, row, new Color(40, 40, 40, 255));
+
             // hitboxes PLACEHOLDER
             foreach (var ent in physEntities)
-                ent.DrawDebug();
+                if(ent!=playerBody){ent.DrawDebug();}
+
+            // FUTURO RENDER REAL 
+            spritePositionSystem.UpdateAndDraw();
             Raylib.EndDrawing();
 
+
             //debug
-            Console.WriteLine(actors[0].currentAction);
+            Console.WriteLine(actors[0].Action);
         }
         Raylib.CloseWindow();
     }

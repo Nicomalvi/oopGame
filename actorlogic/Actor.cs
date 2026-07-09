@@ -7,7 +7,7 @@ public class Actor
     private PhysicalEntity body;
 
     private Behavior behavior;
-    public Action currentAction;
+    private Action currentAction;
     private List<Ability> abilities;
 
     public Actor(PhysicalEntity body, Behavior behavior, List<Ability> abilities)
@@ -34,19 +34,24 @@ public class Actor
     {
         Body.SetVelocity(vx,vy);
     }
-
+    public void SwitchAction(Action newAction)
+    {
+        currentAction = newAction;
+        // MODIFICO ANIMACION
+    }
+    
     // busca una ability por tipo, ej: GetAbility<JumpAbility>()
     public T GetAbility<T>() where T : Ability
     {
         return abilities.OfType<T>().FirstOrDefault();
     }
 
+    // booleanos para acortar el código
     public bool StoppedJumpHeight
     {
         get => GetAbility<JumpAbility>()?.stoppedJumpHeight ?? false;
         set { var j = GetAbility<JumpAbility>(); if(j != null) j.stoppedJumpHeight = value; }
     }
-
     public bool AircurrentAction()
     {
         return currentAction == Action.jump || currentAction == Action.fall;
