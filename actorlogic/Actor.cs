@@ -1,13 +1,17 @@
 using System.Text.RegularExpressions;
 
-public enum Action{idle,walk,jump,fall,attack};
+public enum ActorState{idle,walk,jump,fall,attack};
+public enum HorizontalFacing{left,right};
 public class Actor
 // Actor = interfaz: le paso info a mi behavior y esta me dice como actuar (ya sea modificar mis fisicas, estado...)
 {
     private PhysicalEntity body;
 
+    // debido a coupling -> actor no conoce animaciones -> el animation controller cada turno chequea facing
+    public HorizontalFacing facing;
+
     private Behavior behavior;
-    private Action currentAction;
+    private ActorState currentAction;
     private List<Ability> abilities;
 
     public Actor(PhysicalEntity body, Behavior behavior, List<Ability> abilities)
@@ -15,7 +19,8 @@ public class Actor
         this.body = body;
         this.behavior = behavior;
         this.abilities = abilities;
-        currentAction = Action.idle;
+        currentAction = ActorState.idle;
+        facing = HorizontalFacing.right;
     }
     public void Update(float dt)
     {
@@ -34,7 +39,7 @@ public class Actor
     {
         Body.SetVelocity(vx,vy);
     }
-    public void SwitchAction(Action newAction)
+    public void SwitchAction(ActorState newAction)
     {
         currentAction = newAction;
         // MODIFICO ANIMACION
@@ -54,27 +59,27 @@ public class Actor
     }
     public bool AircurrentAction()
     {
-        return currentAction == Action.jump || currentAction == Action.fall;
+        return currentAction == ActorState.jump || currentAction == ActorState.fall;
     }
-    public bool GroundcurrentAction()
+    public bool GroundCurrentAction()
     {
-        return currentAction == Action.idle || currentAction == Action.walk;
+        return currentAction == ActorState.idle || currentAction == ActorState.walk;
     }
     private bool CanAttack()
     {
-        return currentAction != Action.jump && currentAction != Action.fall;
+        return currentAction != ActorState.jump && currentAction != ActorState.fall;
     }
     private bool CanMove()
     {
-        return currentAction != Action.attack;
+        return currentAction != ActorState.attack;
     }
     private bool CanJump()
     {
-        return currentAction != Action.attack;
+        return currentAction != ActorState.attack;
     }
 
     public PhysicalEntity Body => body;
-    public Action Action => currentAction;
+    public ActorState Action => currentAction;
     // mismos getters que body para un trabajo mas limpio
     // actor = api publica
     public bool OnPlatform => body.OnPlatform;

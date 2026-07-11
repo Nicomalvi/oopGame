@@ -1,18 +1,9 @@
-- cambiar dependencias y referencias: PhysEnt no deberia tener un mapGrid!!
-                                      PhysEnt deberia tener un actor?
-                                      usar MEDIADOR??
-    - physent -> move()       -> mediador; mediador -> move()       -> mapGrid; 
-    - mapGrid -> colisiones() -> mediador; mediador -> colisiones() -> physent;
-                                      
+- ActorState va a crecer mucho (si sigue asi habra un attacking, attackingHeavy, throwingProjectile...)
+    - animaciones y habilidades podrian usar FASES, por ahora fases de 1 misma accion se diferencian solo
+      con varios timers
+
+- de alguna forma Actor -> su VX -> Sprite, con source width negativa puedo flipear texturas
+
 - velocidades deberian funcionar en relacion a cellSize, no mas floats !!!
 
 - verificar funcionamiento gravedad y relacion con deltaTime
-
-- ciertas Behavior van a ser muy similares -> meter en Actor
-    (ejemplo: Jump, MoveHorizontal, Attack van a ser parecidas para el
-    player y para un enemigo)
-
-- habilitar doubleJump con un booleano en las behavior
-- facilitar mas level editor -> [1*5@] = [11111@]
-    cambiar TODO el level editor... que sea "creame este chunk, esq. inferior izq en x,y"
-- plataformas deben poder llevar cosas encima [DIFICIL] 

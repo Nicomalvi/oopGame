@@ -14,6 +14,13 @@ public class PlayerInputBehavior : Behavior
 {
     public override bool Execute(Actor actor, float dt)
     {
+        // esto podria ser mas restrictivo
+            // ejemplo: horizontalMove marca un posible estado final como idle
+            // no hago nada en attackCheck, jumpCheck cambia ese estado a jump
+            // cambie de estado 1 sola vez, no hice pasos innecesarios en sistema de animaciones 
+
+            // ademas ahora mismo D + F = moverme y atacar en el mismo turno,
+            // acciones más arriba tienen prioridad y se pueden acumular
         HorizontalMoveCheck(actor, dt);
         AttackCheck(actor);
         JumpCheck(actor);
@@ -22,10 +29,16 @@ public class PlayerInputBehavior : Behavior
 
     private void HorizontalMoveCheck(Actor actor, float dt)
     {
+        // INTENTO moverme horizontalmente -> cambio facing
         int dirX = 0;
-        if (Raylib.IsKeyDown(KeyboardKey.A)) dirX = -1;
-        if (Raylib.IsKeyDown(KeyboardKey.D)) dirX = 1;
-
+        if (Raylib.IsKeyDown(KeyboardKey.A)) {
+            dirX = -1;
+            actor.facing = HorizontalFacing.left;
+        }
+        if (Raylib.IsKeyDown(KeyboardKey.D)) {
+            dirX = 1;
+            actor.facing = HorizontalFacing.right;
+        }
         if(dirX != 0)
         {
             float moveSpeed = actor.OnPlatform ? actor.MoveSpeed : actor.MoveSpeed*0.60f;
@@ -34,6 +47,7 @@ public class PlayerInputBehavior : Behavior
         else
         {
             actor.ApplyHorizontalFriction(dt);
+            if(actor.GroundCurrentAction()){actor.SwitchAction(ActorState.idle);}
         }
     }
 
@@ -43,7 +57,7 @@ public class PlayerInputBehavior : Behavior
         {
             actor.Jump();
         }
-        else if (actor.Action == Action.jump)
+        else if (actor.Action == ActorState.jump)
         {
             actor.ReleaseJump();
         }

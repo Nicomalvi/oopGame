@@ -6,7 +6,8 @@ public class AnimationPlayer
     private EntitySprite sprite;
     private float frameWidth;
     private float frameHeight;
-    private Action currentAction;
+    private int widthSign;
+    private ActorState currentAction;
 
     public AnimationPlayer(List<AnimationTimer> timers, EntitySprite sprite, float frameWidth, float frameHeight)
     {
@@ -14,7 +15,8 @@ public class AnimationPlayer
         this.sprite = sprite;
         this.frameWidth = frameWidth;
         this.frameHeight = frameHeight;
-        currentAction = Action.idle;
+        currentAction = ActorState.idle;
+        widthSign = 1;
     }
 
     public void Tick(float dt)
@@ -31,7 +33,7 @@ public class AnimationPlayer
         UpdateSource();
     }
 
-    public void ChangeAnimation(Action newAction)
+    public void ChangeAnimation(ActorState newAction)
     {
         if (newAction == currentAction) // podria ir en changeAction del actor, a veces quizas quiero reiniciar animaciones
             return;
@@ -41,12 +43,17 @@ public class AnimationPlayer
         UpdateSource();
     }
 
+    public void SetHorizontalFacing(HorizontalFacing newDir)
+    {
+        widthSign = newDir == HorizontalFacing.left ? -1 : 1;
+    }
+
     private void UpdateSource()
     {
         sprite.source = new Rectangle(
             timers[(int)currentAction].CurrentFrame * frameWidth,
             (int)currentAction * frameHeight,
-            frameWidth,
+            frameWidth * widthSign,
             frameHeight
         );
     }

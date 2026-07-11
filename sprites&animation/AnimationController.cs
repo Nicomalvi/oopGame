@@ -3,7 +3,7 @@ public class AnimationController
 {
     private AnimationPlayer player;
     private Actor actor;
-    private Action latestAction;
+    private ActorState latestAction;
 
     public AnimationController(AnimationPlayer player, Actor actor)
     {
@@ -21,5 +21,7 @@ public class AnimationController
             player.ChangeAnimation(actor.Action);
             latestAction = actor.Action;
         }
+        
+        player.SetHorizontalFacing(actor.facing);
     }
 }
