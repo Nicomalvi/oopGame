@@ -1,6 +1,9 @@
 # Resumen general
 Pequeño motor de platformer 2D creado para analizar programación orientada a objetos en C#.
 
+## Arquitectura
+
+![Diagrama de clases del proyecto](docs/diagramaOopProject.png)
 
 ### PhysicalEntity
 Representa una entidad física del mundo. Contiene su posición, velocidad y una hitbox. 

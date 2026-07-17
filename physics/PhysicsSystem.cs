@@ -54,20 +54,21 @@ public class PhysicsSystem
     {
         // me voy moviendo de a 1 paso
         // si detecto una colision, chequeo si me hace frenar, chequeo efectos de la colision
-        (float vx, float vy) =  ent.MoveVector;
+        (float initialVx, float initialVy) =  ent.MoveVector;
+        (float stepVx, float stepVy) = (initialVx,initialVy);
 
-        vx *= dt; // multiplico por frameTime
-        vy *= dt;
+        stepVx *= dt; // multiplico por frameTime
+        stepVy *= dt;
 
-        if((vx,vy) == (0,0)){return;} // corto acá si la suma de velocidad personal y externa es 0
+        if((stepVx,stepVy) == (0,0)){return;} // corto acá si la suma de velocidad personal y externa es 0
 
         (int x1, int xf, int y1, int yf) = EntityMapCells(ent);
         map.RemoveEntity(ent,x1,xf,y1,yf);
 
         (float x, float y) =    ent.PosVector;
 
-        float maxSteps = Math.Max(Math.Abs(vx), Math.Abs(vy));
-        (float stepX, float stepY) = (vx / maxSteps, vy / maxSteps);
+        float maxSteps = Math.Max(Math.Abs(stepVx), Math.Abs(stepVy));
+        (float stepX, float stepY) = (stepVx / maxSteps, stepVy / maxSteps);
 
         List<PhysicalEntity> entities = new List<PhysicalEntity>();
 
@@ -83,7 +84,7 @@ public class PhysicsSystem
                 x -= stepX;
                 ent.SetPosition(x,y);
                 stepX = 0;
-                ent.SetVelocity(0,vy);
+                ent.SetVelocity(0,initialVy);
             }
             // todo igual pero ahora con y
             y += stepY;
@@ -95,7 +96,7 @@ public class PhysicsSystem
                 y -= stepY;
                 ent.SetPosition(x,y);
                 stepY = 0;
-                ent.SetVelocity(vx,0);
+                ent.SetVelocity(initialVx,0);
             }
         }
         ent.SetPosition(x,y);
