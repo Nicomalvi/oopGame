@@ -7,3 +7,5 @@
 - velocidades deberian funcionar en relacion a cellSize, no mas floats !!!
 
 - verificar funcionamiento gravedad y relacion con deltaTime
+
+- codigo behavior medio feo, basicamente deberia conocer un Actor siempre? lo mismo Abilities

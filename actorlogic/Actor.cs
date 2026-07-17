@@ -9,9 +9,9 @@ public class Actor
 
     // debido a coupling -> actor no conoce animaciones -> el animation controller cada turno chequea facing
     public HorizontalFacing facing;
+    private ActorState currentAction;
 
     private Behavior behavior;
-    private ActorState currentAction;
     private List<Ability> abilities;
 
     public Actor(PhysicalEntity body, Behavior behavior, List<Ability> abilities)
