@@ -10,9 +10,10 @@ public class Program
         int width = SCREEN_W;
         int height = SCREEN_H;
 
-        // creo las paredes del nivel inicial
+        //============================= CREACION DE MAPA, PHYS_SYSTEM =============================
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
-
+        PhysicsSystem physSys = new PhysicsSystem(map);
+        LevelLoader levelLoader = new LevelLoader(CELL_SIZE, physSys);
         string chunk =
         "111111111111111 1" +
         "1               1" +
@@ -24,30 +25,30 @@ public class Program
         "1     1         1" +
         "1  111111111111 1" +
         "111111111111111 1";
-        var physEntities = map.CreateChunks(chunk, cols: 17, originX: 0, originY: 0);
-        physEntities.AddRange(map.CreateChunks(chunk, cols: 17, originX: 13*32, originY: 0));
-        physEntities.AddRange(map.CreateChunks(chunk, cols: 17, originX: 0, originY: 10*32));
-        physEntities.AddRange(map.CreateChunks(chunk, cols: 17, originX: 13*32, originY: 10*32));
+        //==============================================================================================
 
+        //============================= PLACEHOLDER: DRAWDEBUG USA PHYSENTS ============================
+        var physEntities = levelLoader.CreateChunk(chunk, cols: 17, originX: 0, originY: 0);
+        physEntities.AddRange(levelLoader.CreateChunk(chunk, cols: 17, originX: 13*32, originY: 0));
+        physEntities.AddRange(levelLoader.CreateChunk(chunk, cols: 17, originX: 0, originY: 10*32));
+        physEntities.AddRange(levelLoader.CreateChunk(chunk, cols: 17, originX: 13*32, originY: 10*32));
+        PhysicalEntity playerBody = new PhysicalEntity(64,64,16,16,true);
+        physEntities.Add(playerBody); // placeholder
+        //==============================================================================================
+        
+        //============================= INICIALIZACION RAYLIB ==========================================
         Raylib.InitWindow(SCREEN_W, SCREEN_H, "Physics Debug");
         Raylib.SetTargetFPS(60);
         float dt;
-
-        PhysicalEntity playerBody = new PhysicalEntity(64,64,16,16,true);
-        physEntities.Add(playerBody); // placeholder
-
+        //==============================================================================================
+        
         Behavior playerBehavior = new PlayerInputBehavior();
         Actor playerActor = new Actor(playerBody, playerBehavior,[new MoveAbility(320), new JumpAbility()]);
 
         List<Actor> actors = new List<Actor>();
         actors.Add(playerActor);
 
-        PhysicsSystem physSys = new PhysicsSystem(map);
-        physSys.AddEntity(playerBody);
-        foreach (PhysicalEntity phys in physEntities)
-        {
-            physSys.AddEntity(phys);
-        }
+        physSys.AddEntity(playerBody); // placeholder para drawDebug
 
         // PLACEHOLDER
         // SPRITES DEL PLAYER

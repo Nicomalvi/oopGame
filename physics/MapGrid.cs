@@ -8,7 +8,6 @@ public class MapGrid
     private int cellSize;
     private float width;
     private float height;
-    private Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>> factories;
 
     public MapGrid(int width, int height, int cellSize)
     {
@@ -28,13 +27,6 @@ public class MapGrid
                 grid[i][j] = new List<PhysicalEntity>();
             } 
         }  
-        factories = new Dictionary<char, Func<float, float, MapGrid, PhysicalEntity>>
-        {
-            // pared, hitbox tamaño cellSize x cellSize
-            ['1'] = (x, y, m) => new PhysicalEntity(x, y, m.CellSize, m.CellSize, false),
-            // nico, hitbox tamaño cellSize/2 x cellSize/2
-            ['@'] = (x, y, m) => new PhysicalEntity(x, y, m.CellSize/2, m.CellSize/2, true),
-        };
     }
     public List<PhysicalEntity> GetCellByIndex(int x, int y)
     {
@@ -85,29 +77,6 @@ public class MapGrid
         }
         (float x, float y) = player.PosVector;
         Console.WriteLine("(" + x + ", " + y + ")");
-    }
-    public List<PhysicalEntity> CreateChunks(string map, int cols, float originX, float originY)
-    {
-        List<PhysicalEntity> created = new List<PhysicalEntity>();
-        int rows = map.Length / cols;
-
-        for (int row = 0; row < rows; row++)
-        {
-            for (int col = 0; col < cols; col++)
-            {
-                char c = map[row * cols + col];
-
-                float px = originX + col * cellSize;
-                float py = originY + row * cellSize;
-
-                if (factories.ContainsKey(c))
-                {
-                    Console.WriteLine($"char='{c}' row={row} col={col} px={px} py={py}");
-                    created.Add(factories[c](px, py, this));
-                }
-            }
-        }
-        return created;
     }
     //public PhysicalEntity?[][] Grid => grid;
     public int Cols => cols;
