@@ -13,7 +13,7 @@ public class Program
         //============================= CREACION DE MAPA, PHYS_SYSTEM =============================
         MapGrid map = new MapGrid(width,height,CELL_SIZE);
         PhysicsSystem physSys = new PhysicsSystem(map);
-        LevelLoader levelLoader = new LevelLoader(CELL_SIZE, physSys);
+        EntityFactory entityFactory = new EntityFactory(CELL_SIZE, physSys);
         string chunk =
         "111111111111111 1" +
         "1               1" +
@@ -27,13 +27,11 @@ public class Program
         "111111111111111 1";
         //==============================================================================================
 
-        //============================= PLACEHOLDER: DRAWDEBUG USA PHYSENTS ============================
-        var physEntities = levelLoader.CreateChunk(chunk, cols: 17, originX: 0, originY: 0);
-        physEntities.AddRange(levelLoader.CreateChunk(chunk, cols: 17, originX: 13*32, originY: 0));
-        physEntities.AddRange(levelLoader.CreateChunk(chunk, cols: 17, originX: 0, originY: 10*32));
-        physEntities.AddRange(levelLoader.CreateChunk(chunk, cols: 17, originX: 13*32, originY: 10*32));
-        PhysicalEntity playerBody = new PhysicalEntity(64,64,16,16,true);
-        physEntities.Add(playerBody); // placeholder
+        //============================= CREO EL MAPA ===================================================
+        entityFactory.CreateChunk(chunk, cols: 17, originX: 0, originY: 0);
+        entityFactory.CreateChunk(chunk, cols: 17, originX: 13*32, originY: 0);
+        entityFactory.CreateChunk(chunk, cols: 17, originX: 0, originY: 10*32);
+        entityFactory.CreateChunk(chunk, cols: 17, originX: 13*32, originY: 10*32);
         //==============================================================================================
         
         //============================= INICIALIZACION RAYLIB ==========================================
@@ -42,6 +40,8 @@ public class Program
         float dt;
         //==============================================================================================
         
+        //============================== CREACIÓN DEL PLAYER ===========================================
+        PhysicalEntity playerBody = new PhysicalEntity(64,64,16,16,true);
         Behavior playerBehavior = new PlayerInputBehavior();
         Actor playerActor = new Actor(playerBody, playerBehavior,[new MoveAbility(320), new JumpAbility()]);
 
@@ -56,7 +56,6 @@ public class Program
         Texture2D playerTexture = Raylib.LoadTextureFromImage(playerSpriteSheet);
 
         Vector2 playerSpritePos = new Vector2(playerActor.PosVector.X, playerActor.PosVector.Y);
-        Vector2 playerSpriteSize = new Vector2(playerBody.HitboxDimensions.width, playerBody.HitboxDimensions.height);
         Rectangle initialPlayerSource = new Rectangle(0, 0, 16, 16);
 
         EntitySprite playerSprite = new EntitySprite(playerTexture, playerSpritePos, initialPlayerSource);
@@ -73,6 +72,7 @@ public class Program
             playerSprite, playerBody.HitboxDimensions.width, playerBody.HitboxDimensions.height);
 
         AnimationController playerAnimationController = new AnimationController(playerAnimationPlayer, playerActor);
+        //==============================================================================================
 
         // SPRITE SYSTEM    
         SpritePositionSystem spritePositionSystem = new SpritePositionSystem();
@@ -104,20 +104,13 @@ public class Program
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
 
-            // grid de referencia
-            // for (int col = 0; col <= width; col += CELL_SIZE)
-            //    Raylib.DrawLine(col, 0, col, height, new Color(40, 40, 40, 255));
-            // for (int row = 0; row <= height; row += CELL_SIZE)
-            //    Raylib.DrawLine(0, row, width, row, new Color(40, 40, 40, 255));
-
-            // hitboxes PLACEHOLDER
-            foreach (var ent in physEntities)
+            // DIBUJO HITBOXES
+            foreach (var ent in physSys.Entities)
                 if(ent!=playerBody){ent.DrawDebug();}
 
             // FUTURO RENDER REAL 
             spritePositionSystem.UpdateAndDraw();
             Raylib.EndDrawing();
-
 
             //debug
             Console.WriteLine(actors[0].Action);

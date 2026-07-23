@@ -1,10 +1,10 @@
-public class LevelLoader
+public class EntityFactory
 {
     private int cellSize;
     private PhysicsSystem physicsSystem; // se guarda una vez, no se repite en cada llamada
     private Dictionary<char, Func<float, float, PhysicalEntity>> factories;
 
-    public LevelLoader(int cellSize, PhysicsSystem physicsSystem)
+    public EntityFactory(int cellSize, PhysicsSystem physicsSystem)
     {
         this.cellSize = cellSize;
         this.physicsSystem = physicsSystem;
@@ -15,9 +15,8 @@ public class LevelLoader
         };
     }
 
-    public List<PhysicalEntity> CreateChunk(string chunk, int cols, float originX, float originY)
+    public void CreateChunk(string chunk, int cols, float originX, float originY)
     {
-        List<PhysicalEntity> created = new List<PhysicalEntity>();
         int rows = chunk.Length / cols;
 
         for (int row = 0; row < rows; row++)
@@ -32,9 +31,7 @@ public class LevelLoader
 
                 var ent = factories[c](px, py);
                 physicsSystem.AddEntity(ent);
-                created.Add(ent);
             }
         }
-        return created;
     }
 }

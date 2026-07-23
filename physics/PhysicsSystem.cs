@@ -152,4 +152,6 @@ public class PhysicsSystem
         ent.SetPosition(x,y);
         return res;
     }
+
+    public List<PhysicalEntity> Entities => entities;
 }
