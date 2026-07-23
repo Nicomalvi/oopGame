@@ -1,5 +1,9 @@
 - DEBERIAN HABER MÁS FORMAS DE PASAR A ESTADO FALLING, es basicamente "me está afectando la gravedad al máximo o no?"
 
+- replantear diferencias y existencia de gameWorld, entityFactory
+
+- se puede simplificar creación de sprites
+
 - ActorState va a crecer mucho (si sigue asi habra un attacking, attackingHeavy, throwingProjectile...)
     - animaciones y habilidades podrian usar FASES, por ahora fases de 1 misma accion se diferencian solo
       con varios timers

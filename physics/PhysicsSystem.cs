@@ -12,7 +12,7 @@ public class PhysicsSystem
         this.entities = new List<PhysicalEntity>();
         GRAVITY = map.CellSize*6;
     }
-    public void UpdatePhysics(float dt)
+    public void Update(float dt)
     {
         foreach (PhysicalEntity ent in entities)
         {
